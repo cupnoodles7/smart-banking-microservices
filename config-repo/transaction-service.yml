@@ -5,3 +5,17 @@ spring:
   data:
     mongodb:
       uri: ${TRANSACTION_DB_URI:mongodb://localhost:27017/transaction_db}
+
+# Distributed tracing exported to Zipkin (PRD sec 6.x - observability).
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URI:http://localhost:9411/api/v2/spans}
+
+# Human-readable request logs for the service (SLF4J -> Logback).
+logging:
+  level:
+    com.smartbank.transaction: INFO
