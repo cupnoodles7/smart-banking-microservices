@@ -1,0 +1,7 @@
+server:
+  port: 8082
+
+spring:
+  data:
+    mongodb:
+      uri: ${USER_DB_URI:mongodb://localhost:27017/user_db}

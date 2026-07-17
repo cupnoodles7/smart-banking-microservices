@@ -1,0 +1,7 @@
+server:
+  port: 8084
+
+spring:
+  data:
+    mongodb:
+      uri: ${WALLET_DB_URI:mongodb://localhost:27017/wallet_db}

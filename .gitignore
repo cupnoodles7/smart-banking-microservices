@@ -1,0 +1,56 @@
+# ---- Java / Maven build output ----
+target/
+build/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+dependency-reduced-pom.xml
+.mvn/wrapper/maven-wrapper.jar
+
+# ---- Spring Boot ----
+*.pid
+spring-shell.log
+
+# ---- IDEs / editors ----
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+# VS Code
+.vscode/
+# NetBeans
+nbproject/
+nb-configuration.xml
+
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ---- Windows ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- Linux ----
+*~
+.directory
+
+# ---- Local config / secrets ----
+*.local
+application-local.yml
+application-local.properties
+.env
+.env.local

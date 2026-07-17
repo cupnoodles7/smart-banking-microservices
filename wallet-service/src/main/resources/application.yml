@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: wallet-service
+  config:
+    # Authoritative config (port, MongoDB URI, JWT secret, Eureka) is served by the
+    # Config Server from config-repo/wallet-service.yml and overrides the local fallbacks below.
+    # 'optional:' lets the service still boot for local development if the Config
+    # Server is down (it then falls back to the values in this file).
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
+
+# ---- Local fallbacks (used only when the Config Server is unreachable) ----
+server:
+  port: 8084
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
