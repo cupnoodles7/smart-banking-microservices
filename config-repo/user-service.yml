@@ -5,3 +5,17 @@ spring:
   data:
     mongodb:
       uri: ${USER_DB_URI:mongodb://localhost:27017/user_db}
+      # Create the unique indexes declared on the User entity (email, phoneNumber) at
+      # startup. Off by default in Spring Boot 3; the service also guards uniqueness in
+      # code (existsByEmail/existsByPhoneNumber), this is the DB-level backstop (PRD sec 6.5).
+      auto-index-creation: true
+
+# Internal (service-to-service) auth for POST /users/internal, called by the Auth
+# Service during registration. Placeholder shared-key scheme (PRD sec 6.7).
+security:
+  internal:
+    api-key: ${USER_INTERNAL_API_KEY:change-me-internal-user-service-key}
+
+logging:
+  level:
+    com.smartbank.user: INFO
