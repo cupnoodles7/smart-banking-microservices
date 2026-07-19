@@ -5,3 +5,25 @@ spring:
   data:
     mongodb:
       uri: ${ACCOUNT_DB_URI:mongodb://localhost:27017/account_db}
+
+# Set to false to skip the User Service existence check on account creation -
+# useful locally before User Service is deployed/reachable. Defaults to true.
+user-service:
+  validation-enabled: true
+
+# Set to false to skip reporting completed transactions to Transaction Service -
+# useful locally before Transaction Service is deployed/reachable. Defaults to true.
+transaction-service:
+  enabled: true
+  url: http://transaction-service
+
+# Business limits (PRD sec 6.5.1), read directly via @Value in AccountServiceImpl.
+bank:
+  savings:
+    max-balance: 1000000
+    daily-transfer-limit: 100000
+    daily-transaction-limit: 20
+  current:
+    max-balance: 1000000
+    daily-transfer-limit: 500000
+    daily-transaction-limit: 100

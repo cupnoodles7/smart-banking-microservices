@@ -2,7 +2,7 @@ spring:
   application:
     name: account-service
   config:
-    # Authoritative config (port, MongoDB URI, JWT secret, Eureka) is served by the
+    # Authoritative config (port, MongoDB URI, business limits, Eureka) is served by the
     # Config Server from config-repo/account-service.yml and overrides the local fallbacks below.
     # 'optional:' lets the service still boot for local development if the Config
     # Server is down (it then falls back to the values in this file).
@@ -24,3 +24,20 @@ management:
     web:
       exposure:
         include: health,info
+
+# Set to false to skip the User Service existence check on account creation -
+# useful locally before User Service is deployed/reachable. Defaults to true.
+user-service:
+  validation-enabled: true
+
+# Business limits (PRD sec 6.5.1), read directly via @Value in AccountServiceImpl.
+# Also duplicated in config-repo/account-service.yml as the authoritative source.
+bank:
+  savings:
+    max-balance: 1000000
+    daily-transfer-limit: 100000
+    daily-transaction-limit: 20
+  current:
+    max-balance: 1000000
+    daily-transfer-limit: 500000
+    daily-transaction-limit: 100
