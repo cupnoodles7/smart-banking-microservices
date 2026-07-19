@@ -8,20 +8,14 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-/**
- * Credentials record in auth_db (PRD sec 6.5).
- *
- * <p>{@code customerId} is the stable identity that downstream services
- * (account/wallet/transaction) key on; it is generated once at registration.
- * The customer's profile (name, phone, address) lives in the User Service, not here.
- */
+//customerId is the stable identity that downstream services (account/wallet/transaction) key on; it is generated once at registration.
 @Document(collection = "users")
 public class User {
 
     @Id
     private String id;
 
-    /** Stable cross-service identity (PRD sec 6.5). Generated at registration. */
+    
     @Indexed(unique = true)
     private String customerId;
 
@@ -41,14 +35,14 @@ public class User {
 
     private LocalDateTime lastLogin;
 
-    // ---- Refresh-token support (PRD sec 6.8) ----
+   
     private String refreshToken;
 
     private LocalDateTime refreshTokenExpiry;
 
     public User() {
         this.createdAt = LocalDateTime.now();
-        this.roles.add("USER"); // Default role
+        this.roles.add("USER");
     }
 
     @Override
