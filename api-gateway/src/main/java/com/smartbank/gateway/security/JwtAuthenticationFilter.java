@@ -19,6 +19,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * Global gateway filter that enforces JWT presence and validity on every route
@@ -62,8 +64,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         try {
             Claims claims = jwtService.parse(token);
             ServerHttpRequest mutated = request.mutate()
+                    // Identity forwarded to downstream services as trusted headers.
+                    // subject = username; customerId/email/roles are explicit claims.
+                    .header("X-Auth-Username", String.valueOf(claims.getSubject()))
                     .header("X-Customer-Id", String.valueOf(claims.get("customerId")))
-                    .header("X-User-Email", claims.getSubject())
+                    .header("X-User-Email", String.valueOf(claims.get("email")))
+                    .header("X-Auth-Roles", rolesHeader(claims))
                     .build();
             return chain.filter(exchange.mutate().request(mutated).build());
         } catch (JwtException | IllegalArgumentException ex) {
@@ -74,6 +80,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isOpen(String path) {
         return properties.getOpenPaths().stream().anyMatch(p -> pathMatcher.match(p, path));
+    }
+
+    /** Flatten the "roles" claim (a JSON array) into a comma-separated header value. */
+    private String rolesHeader(Claims claims) {
+        Object roles = claims.get("roles");
+        if (roles instanceof Collection<?> c) {
+            return c.stream().map(String::valueOf).collect(Collectors.joining(","));
+        }
+        return "";
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String path, String message) {
