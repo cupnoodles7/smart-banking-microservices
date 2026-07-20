@@ -1,5 +1,4 @@
 # Shared defaults applied to every service that imports config from the Config Server.
-# Service-specific files (auth-service.yml, account-service.yml, ...) override these.
 
 eureka:
   client:

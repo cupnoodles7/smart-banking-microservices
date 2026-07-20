@@ -1,12 +1,12 @@
 # Smart Banking & Wallet System — Track B (Microservices MVP)
 
-Scaffold for the microservices track of the Smart Banking & Wallet System
+The microservices track of the Smart Banking & Wallet System
 (see `Smart_Banking_System_Final_PRD.docx`).
 
 - **Platform services** (`config-server`, `eureka-server`, `api-gateway`) are fully implemented.
 - **Business services** (`auth-service`, `user-service`, `account-service`, `wallet-service`,
-  `transaction-service`) are **structure only**: the per-service package layout from PRD §6.11,
-  plus a build file and bootstrap config. No business logic / domain classes yet.
+  `transaction-service`) are implemented (CRUD, JWT auth, cross-service calls) per the
+  per-service package layout in PRD §6.11.
 
 ## Stack
 
@@ -20,11 +20,11 @@ bank-microservice/
 ├── config-server/          # FULL  — Spring Cloud Config Server            (:8888)
 ├── eureka-server/          # FULL  — Netflix Eureka registry               (:8761)
 ├── api-gateway/            # FULL  — Spring Cloud Gateway + JWT validation  (:8080)
-├── auth-service/           # structure only                                (:8081)
-├── user-service/           # structure only                                (:8082)
-├── account-service/        # structure only                                (:8083)
-├── wallet-service/         # structure only                                (:8084)
-└── transaction-service/    # structure only                                (:8085)
+├── auth-service/           # register/login/refresh, JWT issue, BCrypt      (:8081)
+├── user-service/           # customer profile CRUD                          (:8082)
+├── account-service/        # savings/current accounts, deposit/withdraw/xfer (:8083)
+├── wallet-service/         # stored-value wallet: topup/transfer/pay-bill   (:8084)
+└── transaction-service/    # immutable transaction ledger                   (:8085)
 ```
 
 Each business service follows PRD §6.11:
