@@ -7,10 +7,14 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.smartbank.auth.client.UserServiceClient;
 import com.smartbank.auth.dto.request.AuthRequest;
 import com.smartbank.auth.dto.request.LoginRequest;
 import com.smartbank.auth.dto.response.AuthResponse;
@@ -29,32 +33,58 @@ public class AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private UserServiceClient userServiceClient;
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 
     //Public
 
-    //regsiter a new user
+    // Register a new user
+    //  1. reject duplicate username/email up front (auth side)
+    //  2. create the customer profile in the User Service first, it owns the customerId
+    //  3. write our credential row keyed on that customerId
+    //  4. if step 3 fails, best-effort DELETE the profile so we don't orphan it
     public User registerUser(AuthRequest request) {
         logger.info("Registering user: {}", request.getUsername());
 
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
 
-        User user = new User();
-        user.setCustomerId(UUID.randomUUID().toString());
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEnabled(true);
+        // Step 2 - create the profile first
+        String customerId = UUID.randomUUID().toString();
+        try {
+            customerId = userServiceClient.createProfile(customerId, request);
+        } catch (HttpStatusCodeException ex) {
+            logger.warn("Profile creation rejected by user-service: {}", ex.getStatusText());
+            throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()),
+                    "Could not create profile: " + ex.getResponseBodyAsString());
+        }
 
-        User saved = userRepository.save(user);
-        logger.info("User registered: {} (customerId={})", saved.getUsername(), saved.getCustomerId());
-        return saved;
+        // Step 3 - write the credential
+        // step 4 - compensate on failure.
+        try {
+            User user = new User();
+            user.setCustomerId(customerId);
+            user.setUsername(request.getUsername());
+            user.setEmail(request.getEmail());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setEnabled(true);
+
+            User saved = userRepository.save(user);
+            logger.info("User registered: {} (customerId={})", saved.getUsername(), saved.getCustomerId());
+            return saved;
+        } catch (RuntimeException ex) {
+            logger.error("Credential write failed for customerId={}; compensating", customerId, ex);
+            userServiceClient.deleteProfileQuietly(customerId);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Registration failed while saving credentials");
+        }
     }
 
     //Authenticate and issue an access + refresh token pair
@@ -66,16 +96,16 @@ public class AuthService {
             userOpt = userRepository.findByEmail(request.getUsernameOrEmail());
         }
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("Invalid username/email or password");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username/email or password");
         }
 
         User user = userOpt.get();
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid username/email or password");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username/email or password");
         }
         if (!user.isEnabled()) {
-            throw new RuntimeException("Account is disabled");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is disabled");
         }
 
         user.setLastLogin(LocalDateTime.now());
@@ -100,15 +130,15 @@ public class AuthService {
     public AuthResponse refreshAccessToken(String refreshToken) {
         if (!jwtUtil.validateToken(refreshToken)
                 || !"refresh".equals(jwtUtil.extractTokenType(refreshToken))) {
-            throw new RuntimeException("Invalid or expired refresh token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
         }
 
         User user = userRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token not recognized"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not recognized"));
 
         if (user.getRefreshTokenExpiry() != null
                 && user.getRefreshTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Refresh token expired");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired");
         }
 
         String accessToken = jwtUtil.generateAccessToken(
@@ -126,7 +156,7 @@ public class AuthService {
 
     public User getUserProfile(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     public boolean validateToken(String token) {
@@ -135,7 +165,7 @@ public class AuthService {
 
     public User getUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     public Iterable<User> getAllUsers() {

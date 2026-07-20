@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -25,6 +26,7 @@ public class User {
     @Indexed(unique = true) // unique email
     private String email;
 
+    @JsonIgnore // never serialize the BCrypt hash to any client (PRD sec 6.10 / DTO discipline)
     private String password;
 
     private Set<String> roles = new HashSet<>(); // USER, ADMIN
@@ -36,8 +38,10 @@ public class User {
     private LocalDateTime lastLogin;
 
    
+    @JsonIgnore // stored refresh token must never leak to a client
     private String refreshToken;
 
+    @JsonIgnore
     private LocalDateTime refreshTokenExpiry;
 
     public User() {
