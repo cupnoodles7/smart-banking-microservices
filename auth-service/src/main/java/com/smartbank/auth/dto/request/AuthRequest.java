@@ -1,10 +1,13 @@
 package com.smartbank.auth.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-//Registration request
+//Registration request. Besides the login credential it carries the profile fields
+//user-service needs, since registration now creates the customer profile in one step.
 public class AuthRequest {
 
     @NotBlank(message = "Username is required")
@@ -18,6 +21,16 @@ public class AuthRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
     private String password;
+
+    @NotBlank(message = "Full name is required")
+    private String fullName;
+
+    @NotBlank(message = "Phone number is required")
+    private String phoneNumber;
+
+    @NotNull(message = "Address is required")
+    @Valid
+    private AddressRequest address;
 
     public String getUsername() {
         return username;
@@ -41,5 +54,29 @@ public class AuthRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public AddressRequest getAddress() {
+        return address;
+    }
+
+    public void setAddress(AddressRequest address) {
+        this.address = address;
     }
 }

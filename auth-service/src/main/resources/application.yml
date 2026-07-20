@@ -27,6 +27,15 @@ security:
     secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
     access-token-expiry-ms: ${JWT_ACCESS_EXPIRY_MS:900000}      # 15 minutes (PRD sec 6.8)
     refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000} # 7 days     (PRD sec 6.8)
+  # Shared secret for user-service's POST /users/internal (must match its
+  # security.internal.api-key). Placeholder scheme (PRD sec 6.7).
+  internal:
+    api-key: ${USER_INTERNAL_API_KEY:change-me-internal-user-service-key}
+
+
+# Base URL for user-service; resolved through Eureka via the @LoadBalanced RestTemplate.
+user-service:
+  url: ${USER_SERVICE_URL:http://user-service}
 
 
 gateway:

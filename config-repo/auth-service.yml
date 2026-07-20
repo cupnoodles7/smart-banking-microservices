@@ -5,3 +5,15 @@ spring:
   data:
     mongodb:
       uri: ${AUTH_DB_URI:mongodb://localhost:27017/auth_db}
+
+# Base URL for user-service; resolved through Eureka via the @LoadBalanced RestTemplate.
+# Registration calls its internal profile-create endpoint (POST /users/internal).
+user-service:
+  url: ${USER_SERVICE_URL:http://user-service}
+
+# Shared secret presented in the X-Internal-Api-Key header to user-service's
+# POST /users/internal. Must match user-service's security.internal.api-key.
+# Placeholder shared-key scheme (PRD sec 6.7).
+security:
+  internal:
+    api-key: ${USER_INTERNAL_API_KEY:change-me-internal-user-service-key}

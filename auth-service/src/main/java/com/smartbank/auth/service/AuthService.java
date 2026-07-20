@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.smartbank.auth.client.UserServiceClient;
 import com.smartbank.auth.dto.request.AuthRequest;
 import com.smartbank.auth.dto.request.LoginRequest;
 import com.smartbank.auth.dto.response.AuthResponse;
@@ -29,6 +30,9 @@ public class AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private UserServiceClient userServiceClient;
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 
@@ -45,8 +49,16 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
+        String customerId = UUID.randomUUID().toString();
+
+        // Create the customer profile in user-service FIRST, keyed on this same customerId.
+        // If it fails we abort here and never persist the credential, so we don't leave an
+        // auth record with no matching profile. (No cross-DB transaction exists; the inverse
+        // risk - a profile with no credential - is only possible if the save below fails.)
+        userServiceClient.createProfile(customerId, request);
+
         User user = new User();
-        user.setCustomerId(UUID.randomUUID().toString());
+        user.setCustomerId(customerId);
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
