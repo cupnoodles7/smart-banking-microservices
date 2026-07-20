@@ -90,6 +90,16 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
+    @Override
+    public void deleteById(String id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            log.info("Deleted user profile id={}", id);
+        } else {
+            log.info("Delete no-op: no user profile with id={}", id);
+        }
+    }
+
     /** PRD sec 7.2: email must contain '@', phone must be exactly 10 digits. */
     private void validateFormat(String email, String phoneNumber) {
         if (!ValidationUtils.isValidEmail(email)) {
