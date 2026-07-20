@@ -18,6 +18,8 @@ public class UserMapper {
     /** Build a new entity from a create request. Timestamps are set by auditing. */
     public User toEntity(CreateUserRequest request) {
         User user = new User();
+        // Auth supplies the id so the document _id == the system-wide customerId.
+        user.setId(request.getId());
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
