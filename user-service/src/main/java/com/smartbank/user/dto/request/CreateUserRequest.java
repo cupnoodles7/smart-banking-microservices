@@ -9,8 +9,15 @@ import jakarta.validation.constraints.NotNull;
  *
  * <p>Bean Validation covers structural presence only; the '@'-in-email and 10-digit-phone
  * rules and uniqueness are enforced in the service layer (PRD sec 7.2).
+ *
+ * <p>The {@code id} is supplied by the Auth Service (the identity authority) so the profile
+ * document {@code _id} equals the system-wide {@code customerId} carried in the JWT. The
+ * service layer rejects a duplicate id; structural presence is checked here.
  */
 public class CreateUserRequest {
+
+    @NotBlank(message = "id is required")
+    private String id;
 
     @NotBlank(message = "fullName is required")
     private String fullName;
@@ -24,6 +31,14 @@ public class CreateUserRequest {
     @NotNull(message = "address is required")
     @Valid
     private AddressDto address;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getFullName() {
         return fullName;

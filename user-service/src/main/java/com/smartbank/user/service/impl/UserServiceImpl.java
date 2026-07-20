@@ -45,6 +45,12 @@ public class UserServiceImpl implements UserService {
     public UserResponse createUser(CreateUserRequest request) {
         validateFormat(request.getEmail(), request.getPhoneNumber());
 
+        // Auth supplies the id (== customerId); reject a collision rather than silently
+        // overwriting an existing profile via save().
+        if (userRepository.existsById(request.getId())) {
+            log.warn("Rejected create: id already in use ({})", request.getId());
+            throw new DuplicateCustomerException("Customer id already in use: " + request.getId());
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
             log.warn("Rejected create: email already in use ({})", request.getEmail());
             throw new DuplicateCustomerException("Email already in use: " + request.getEmail());
