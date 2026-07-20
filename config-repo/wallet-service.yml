@@ -1,5 +1,5 @@
 server:
-  port: 8084   # Use the port assigned by your team if different
+  port: 8084 
 
 spring:
   application:
