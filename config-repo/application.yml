@@ -6,6 +6,9 @@ eureka:
       defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
+    # All services run on this host in dev; advertise loopback so the gateway
+    # reaches them at a reachable address instead of the (unreachable) LAN IP.
+    ip-address: ${EUREKA_INSTANCE_IP:127.0.0.1}
 
 security:
   jwt:
