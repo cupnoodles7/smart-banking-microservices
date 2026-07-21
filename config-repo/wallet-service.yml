@@ -17,7 +17,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,circuitbreakers,circuitbreakerevents
 
   endpoint:
     health:
@@ -31,3 +31,18 @@ management:
     metrics:
       export:
         enabled: true
+
+# Circuit Breaker (Resilience4j) - guards the wallet's calls to Account and Transaction services.
+# The "default" config is applied to every circuit breaker instance in this service.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        slidingWindowSize: 10
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        # Business rejections (HTTP 400) are normal outcomes, not outages - never trip the breaker on them.
+        ignoreExceptions:
+          - feign.FeignException$BadRequest

@@ -9,11 +9,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.smartbank.auth.dto.request.AuthRequest;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 //Calls the User Service's internal, service-to-service profile endpoints during registration
 @Component
@@ -37,6 +41,7 @@ public class UserServiceClient {
     //Creates the customer profile. The generated {@code customerId} is passed as the profile id so the User document {@code _id} equals the system-wide customerId.
     
     @SuppressWarnings("unchecked")
+    @CircuitBreaker(name = "user-service", fallbackMethod = "createProfileFallback")
     public String createProfile(String customerId, AuthRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", customerId);
@@ -57,7 +62,20 @@ public class UserServiceClient {
         return id;
     }
 
-    
+    // Circuit-breaker fallback for createProfile. A business rejection from the User Service (HTTP 4xx)
+    // is re-thrown so AuthService's existing handling maps it to the right status; anything else means
+    // the User Service is unreachable (or the breaker is open), so registration fails fast with 503.
+    private String createProfileFallback(String customerId, AuthRequest request, Throwable t) {
+        if (t instanceof HttpStatusCodeException httpError) {
+            throw httpError;
+        }
+        log.warn("User Service unavailable while creating profile for {}: {}",
+                request.getUsername(), t.getMessage());
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "User Service is temporarily unavailable. Please try again later.");
+    }
+
+
     public void deleteProfileQuietly(String customerId) {
         try {
             HttpHeaders headers = new HttpHeaders();
