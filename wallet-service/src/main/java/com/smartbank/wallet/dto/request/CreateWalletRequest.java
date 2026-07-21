@@ -5,10 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-/**
- * Create a wallet linked to an account (PRD §6.7 POST /wallets).
- * The owning {@code customerId} is taken from the trusted gateway header, not the body.
- */
+// What the caller sends to open a new wallet. The owner comes from the trusted login header, not this body.
 @Data
 public class CreateWalletRequest {
 

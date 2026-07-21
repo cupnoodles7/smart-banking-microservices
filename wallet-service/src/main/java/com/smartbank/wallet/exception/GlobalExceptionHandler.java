@@ -13,11 +13,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 
-/**
- * Maps structural failures to the standard §6.9 error shape. Business-rule
- * violations are handled inside the service (returned as HTTP 200 FAILED per
- * PRD §7.3) and never reach here.
- */
+// Turns the things that really go wrong into clean error responses.
+// Business-rule failures are handled in the service and never reach here.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -36,6 +33,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConcurrentUpdateException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ConcurrentUpdateException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(WalletAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(WalletAccessDeniedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

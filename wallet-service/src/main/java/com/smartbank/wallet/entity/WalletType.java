@@ -1,8 +1,6 @@
 package com.smartbank.wallet.entity;
 
-/**
- * Wallet provider type. Ordering standardized per PRD §1.1 (items 6 &amp; 11).
- */
+// The kind of wallet - Paytm, PhonePe, or a custom one.
 public enum WalletType {
     PAYTM,
     PHONEPE,

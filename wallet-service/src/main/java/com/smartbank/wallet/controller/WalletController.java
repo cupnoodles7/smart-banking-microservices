@@ -22,13 +22,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Wallet REST API (PRD §6.7). All routes require a valid JWT — the API Gateway
- * validates it and forwards the authenticated {@code X-Customer-Id} header.
- *
- * <p>Money-moving endpoints return HTTP 200 with a {@link TransactionResult}; a
- * business-rule violation is a {@code FAILED} result, not an HTTP error (PRD §7.3).
- */
+// The wallet's HTTP endpoints. Money-moving calls return 200 with a result - a rejected
+// business rule shows up as a FAILED result, not as an error.
 @RestController
 @RequestMapping("/wallets")
 public class WalletController {
@@ -70,8 +65,9 @@ public class WalletController {
 
     @GetMapping("/customer/{customerId}")
     public ResponseEntity<Page<WalletResponse>> listByCustomer(
+            @RequestHeader(WalletConstants.HEADER_CUSTOMER_ID) String callerCustomerId,
             @PathVariable String customerId,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(walletService.listByCustomer(customerId, pageable));
+        return ResponseEntity.ok(walletService.listByCustomer(callerCustomerId, customerId, pageable));
     }
 }

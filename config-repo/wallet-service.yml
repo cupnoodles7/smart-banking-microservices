@@ -1,3 +1,7 @@
+# Authoritative wallet-service config, served by the Config Server and overriding the
+# local fallbacks in wallet-service/src/main/resources/application.yml.
+# Shared defaults (Eureka, management endpoints) come from application.yml in this repo.
+
 server:
   port: 8084
 
@@ -5,3 +9,12 @@ spring:
   data:
     mongodb:
       uri: ${WALLET_DB_URI:mongodb://localhost:27017/wallet_db}
+
+# Business limits (PRD sec 6.6), read via @Value in WalletServiceImpl and used to seed
+# a new wallet's limits at creation. Unlike account-service there is no per-type split -
+# all wallet types (PAYTM, PHONEPE, CUSTOM) share one tier.
+bank:
+  wallet:
+    max-balance: 50000
+    daily-transfer-limit: 20000
+    daily-transaction-limit: 20

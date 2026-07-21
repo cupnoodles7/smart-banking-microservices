@@ -8,9 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * Wallet persistence (PRD §6.12). Only the Wallet service touches {@code wallet_db}.
- */
+// Reads and writes wallets in the database - only this service touches wallet_db.
 @Repository
 public interface WalletRepository extends MongoRepository<Wallet, String> {
 

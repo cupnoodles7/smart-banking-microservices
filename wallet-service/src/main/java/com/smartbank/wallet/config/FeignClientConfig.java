@@ -10,15 +10,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-/**
- * Propagates the caller's identity onto outbound Feign calls.
- *
- * <p>Service-to-service calls (wallet → account, wallet → transaction) go direct via
- * Eureka and bypass the API Gateway, so they carry no identity by default. This
- * interceptor forwards the incoming {@code Authorization} JWT plus the gateway-issued
- * {@code X-Customer-Id}/{@code X-User-Email} headers so downstream services can
- * authenticate/authorize the same principal (PRD §6.2, §6.8).
- */
+// Carries the caller's login token and identity headers along whenever the wallet calls another service.
 @Configuration
 public class FeignClientConfig {
 

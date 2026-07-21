@@ -15,14 +15,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/**
- * Stored-value wallet document — {@code wallet_db.wallets} (PRD §6.5).
- *
- * <p>Holds real money and is linked one-to-one to an Account
- * ({@code linkedAccountId} is unique). Daily counters are reset lazily
- * (PRD §6.14); {@code version} drives optimistic locking on every
- * balance-mutating write (PRD §6.15).
- */
+// A customer's wallet as we store it - real money, tied one-to-one to a bank account.
+// The version field lets us catch two updates racing on the same wallet.
 @Data
 @Builder
 @NoArgsConstructor
@@ -36,7 +30,7 @@ public class Wallet {
     @Indexed
     private String customerId;
 
-    /** Exactly one wallet per linked account (PRD §6.6). */
+    // Only one wallet is allowed per bank account.
     @Indexed(unique = true)
     private String linkedAccountId;
 
@@ -44,23 +38,23 @@ public class Wallet {
 
     private BigDecimal balance;
 
-    /** Hard cap on balance — ₹50,000 (PRD §6.6). */
+    // The most this wallet can ever hold.
     private BigDecimal maxBalance;
 
-    /** Max value that may leave the wallet per day — ₹20,000 (PRD §6.6). */
+    // The most that can leave this wallet in a single day.
     private BigDecimal dailyTransferLimit;
 
     private BigDecimal dailyTransferredAmount;
 
-    /** Max wallet transactions per day — 20 (PRD §6.6). */
+    // How many transactions the wallet is allowed in a day.
     private int dailyTransactionLimit;
 
     private int todayTransactionCount;
 
-    /** Date the daily counters were last reset (PRD §6.14). */
+    // The day we last reset the daily counters above.
     private LocalDate lastLimitResetDate;
 
-    /** Optimistic-lock counter (PRD §6.15). */
+    // Bumped on every save so we can spot two updates clashing on the same wallet.
     @Version
     private Long version;
 

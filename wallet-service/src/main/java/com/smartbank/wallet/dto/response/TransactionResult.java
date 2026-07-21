@@ -11,14 +11,8 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Result of a money-moving wallet operation (top-up / transfer / bill payment).
- *
- * <p>Per PRD §7.3 a business-rule violation is NOT an HTTP error — it comes back
- * as HTTP 200 with {@code status = FAILED} and a {@link FailureReason}. Only
- * structural problems (bad auth, malformed request, missing wallet) produce the
- * §6.9 error shape.
- */
+// How a wallet operation (top-up, transfer, bill payment) turned out. A broken business
+// rule isn't an error here - it comes back as a FAILED result with a 200.
 @Data
 @Builder
 @NoArgsConstructor
@@ -30,10 +24,10 @@ public class TransactionResult {
     private TransactionType transactionType;
     private BigDecimal amount;
 
-    /** The wallet from which the operation was initiated. */
+    // The wallet the operation started from.
     private String walletId;
 
-    /** Resulting balance of {@code walletId} (null when the op did not run). */
+    // The wallet's balance afterwards (null if the operation never ran).
     private BigDecimal resultingBalance;
 
     private String idempotencyKey;

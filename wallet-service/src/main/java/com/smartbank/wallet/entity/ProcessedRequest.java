@@ -10,14 +10,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-/**
- * Idempotency record — {@code wallet_db.processed_requests} (PRD §6.15).
- *
- * <p>The owning service stores each client-supplied {@code idempotencyKey} with the
- * result it produced. A repeated key returns the stored {@link TransactionResult}
- * instead of moving money a second time. The key is the document {@code _id}, so a
- * concurrent duplicate fails on a unique-key clash rather than double-processing.
- */
+// Remembers a request we've already handled, keyed by its idempotency key, so a retry
+// replays the same result instead of moving money twice.
 @Data
 @Builder
 @NoArgsConstructor

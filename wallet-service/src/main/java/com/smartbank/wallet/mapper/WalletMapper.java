@@ -4,10 +4,7 @@ import com.smartbank.wallet.dto.response.WalletResponse;
 import com.smartbank.wallet.entity.Wallet;
 import org.springframework.stereotype.Component;
 
-/**
- * Maps Wallet entities to response DTOs (PRD §6.10 — entities are never returned
- * from a controller).
- */
+// Turns a wallet entity into the response we send back to clients.
 @Component
 public class WalletMapper {
 

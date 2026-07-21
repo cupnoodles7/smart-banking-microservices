@@ -5,11 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Standard error shape for structural failures (PRD §6.9): bad auth, malformed
- * requests, not-found resources, optimistic-lock conflicts. Business-rule failures
- * do NOT use this shape (see {@link TransactionResult}).
- */
+// The error body we send when something is genuinely wrong (bad auth, missing wallet, a conflict).
+// Business-rule failures don't use this - they come back as a FAILED TransactionResult.
 @Data
 @Builder
 @NoArgsConstructor

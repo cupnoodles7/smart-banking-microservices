@@ -6,13 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-/**
- * Top up a wallet from its linked account (PRD §6.7 POST /wallets/topup).
- *
- * <p>{@code amount} is only {@code @NotNull}, not {@code @Positive}: a non-positive
- * amount is a business-rule failure (INVALID_AMOUNT → HTTP 200 FAILED), not a
- * malformed request (PRD §7.3, §10 scenario 1).
- */
+// What the caller sends to top up a wallet from its linked bank account.
 @Data
 public class TopupRequest {
 
