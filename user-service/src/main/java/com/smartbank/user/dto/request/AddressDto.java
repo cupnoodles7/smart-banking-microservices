@@ -1,11 +1,6 @@
 package com.smartbank.user.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-
-/**
- * Postal address supplied on create/update requests (PRD sec 6.5). Structural
- * presence is validated here; domain rules live in the service layer.
- */
 public class AddressDto {
 
     @NotBlank(message = "address.line1 is required")
