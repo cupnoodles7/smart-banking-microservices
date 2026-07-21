@@ -112,7 +112,7 @@ Base paths are shown per service. Through the Gateway (`:8080`) the paths are id
 |--------|-------------------------|-----------------------------------------|--------------|
 | GET    | `/users/{id}`           | `X-Customer-Id` (must equal `{id}`)     | own profile only |
 | PUT    | `/users/{id}`           | `X-Customer-Id` (must equal `{id}`)     | `{fullName, email, phoneNumber, address}` |
-| POST   | `/users/internal`       | `X-Internal-Api-Key`                    | `{id, fullName, email, phoneNumber, address}` → **201**. `email` and `phoneNumber` are unique. Service-to-service. |
+| POST   | `/users/internal`       | `X-Internal-Api-Key`,'change-me-internal-user-service-key'                    | `{id, fullName, email, phoneNumber, address}` → **201**. `email` and `phoneNumber` are unique. Service-to-service. |
 | DELETE | `/users/internal/{id}`  | `X-Internal-Api-Key`                    | → **204**, idempotent. Compensating delete. Service-to-service. |
 
 ### Account Service — `:8083`  (all routes need `X-Customer-Id`)
@@ -141,7 +141,7 @@ Money-moving routes return **HTTP 200** with a `TransactionResult` whose `status
 ### Transaction Service — `:8085`
 
 Immutable ledger. `POST /internal` is service-to-service (idempotent on `idempotencyKey`);
-reads are paged, newest first.
+reads are paged, newest first. X-Internal-Api-Key : f2d26f3cac654b94db725f955aba7a465bbd3fedd46996ae1e48be69b6893bfb
 
 | Method | Path                                   | Body / notes |
 |--------|----------------------------------------|--------------|
