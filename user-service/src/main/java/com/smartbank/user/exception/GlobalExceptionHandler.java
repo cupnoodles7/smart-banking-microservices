@@ -14,12 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 
-/**
- * Translates exceptions into the standard error shape (PRD sec 6.9). Business-rule
- * violations here are structural failures (bad input, not-found, forbidden), which the
- * PRD (sec 7.3) explicitly maps to non-200 responses - unlike financial business-rule
- * outcomes in other services, which return 200 with a FAILED record.
- */
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
