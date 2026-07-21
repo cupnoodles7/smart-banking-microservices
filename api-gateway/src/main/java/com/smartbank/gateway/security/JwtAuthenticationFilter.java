@@ -2,6 +2,7 @@ package com.smartbank.gateway.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -31,6 +32,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
+    // Headers downstream services trust as gateway-asserted identity, plus the
+    // service-to-service key. A client must never supply these, so they are
+    // stripped from every inbound request before the gateway sets its own.
+    private static final List<String> TRUSTED_HEADERS = List.of(
+            "X-Auth-Username", "X-Customer-Id", "X-User-Email", "X-Auth-Roles", "X-Internal-Api-Key");
+
     private final JwtService jwtService;
     private final JwtProperties properties;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -45,11 +52,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
+        // Strip any client-supplied trusted headers up front — on every route,
+        // open or not — so they can only ever carry values the gateway sets.
+        ServerHttpRequest scrubbed = request.mutate()
+                .headers(h -> TRUSTED_HEADERS.forEach(h::remove))
+                .build();
+
         if (isOpen(path)) {
-            return chain.filter(exchange);
+            return chain.filter(exchange.mutate().request(scrubbed).build());
         }
 
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        String authHeader = scrubbed.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             return unauthorized(exchange, path, "Missing or malformed Authorization header");
         }
@@ -57,7 +70,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(BEARER_PREFIX.length());
         try {
             Claims claims = jwtService.parse(token);
-            ServerHttpRequest mutated = request.mutate()
+            // Only access tokens are accepted at the edge
+            if (!"access".equals(claims.get("type"))) {
+                log.warn("Rejected request to {}: token is not an access token", path);
+                return unauthorized(exchange, path, "Access token required");
+            }
+            ServerHttpRequest mutated = scrubbed.mutate()
                     // Identity forwarded to downstream services as trusted headers
                     // subject = username; customerId/email/roles are explicit claims
                     .header("X-Auth-Username", String.valueOf(claims.getSubject()))
