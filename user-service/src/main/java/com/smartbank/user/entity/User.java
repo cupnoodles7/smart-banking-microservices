@@ -8,14 +8,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-/**
- * Customer profile document (PRD sec 6.5, {@code user_db.users}).
- *
- * <p>Owns fullName, email, phone and address only - no accountIds/walletIds arrays:
- * that data belongs to the Account/Wallet services and there is no event bus to keep
- * a copy in sync (PRD sec 1.1 item 2 / 6.4). The document {@code _id} doubles as the
- * system-wide {@code customerId} used by the other services.
- */
 @Document(collection = "users")
 public class User {
 
@@ -24,11 +16,11 @@ public class User {
 
     private String fullName;
 
-    /** Unique across the collection (PRD sec 6.5). */
+
     @Indexed(unique = true)
     private String email;
 
-    /** Unique across the collection (PRD sec 6.5). */
+   
     @Indexed(unique = true)
     private String phoneNumber;
 
@@ -96,7 +88,7 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    /** Embedded postal address (PRD sec 6.5). */
+
     public static class Address {
 
         private String line1;

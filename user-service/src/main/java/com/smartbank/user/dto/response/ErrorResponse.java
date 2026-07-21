@@ -2,10 +2,6 @@ package com.smartbank.user.dto.response;
 
 import java.time.OffsetDateTime;
 
-/**
- * Standard error body (PRD sec 6.9), matching the shape the API Gateway already emits
- * for structural failures: {@code timestamp, status, error, message, path}.
- */
 public class ErrorResponse {
 
     private OffsetDateTime timestamp;
