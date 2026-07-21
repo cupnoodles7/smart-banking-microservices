@@ -4,10 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-/**
- * Payload for updating a customer profile via {@code PUT /users/{id}} (PRD sec 6.7).
- * Same shape as create; format and uniqueness rules are enforced in the service layer.
- */
+
 public class UpdateUserRequest {
 
     @NotBlank(message = "fullName is required")

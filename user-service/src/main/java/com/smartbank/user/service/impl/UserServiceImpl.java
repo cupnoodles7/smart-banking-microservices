@@ -45,6 +45,12 @@ public class UserServiceImpl implements UserService {
     public UserResponse createUser(CreateUserRequest request) {
         validateFormat(request.getEmail(), request.getPhoneNumber());
 
+        // Auth supplies the id (== customerId); reject a collision rather than silently
+        // overwriting an existing profile via save().
+        if (userRepository.existsById(request.getId())) {
+            log.warn("Rejected create: id already in use ({})", request.getId());
+            throw new DuplicateCustomerException("Customer id already in use: " + request.getId());
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
             log.warn("Rejected create: email already in use ({})", request.getEmail());
             throw new DuplicateCustomerException("Email already in use: " + request.getEmail());
@@ -82,6 +88,16 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         log.info("Updated user profile id={}", saved.getId());
         return userMapper.toResponse(saved);
+    }
+
+    @Override
+    public void deleteById(String id) {
+        if (userRepository.existsById(id)) {
+            userRepository.deleteById(id);
+            log.info("Deleted user profile id={}", id);
+        } else {
+            log.info("Delete no-op: no user profile with id={}", id);
+        }
     }
 
     /** PRD sec 7.2: email must contain '@', phone must be exactly 10 digits. */

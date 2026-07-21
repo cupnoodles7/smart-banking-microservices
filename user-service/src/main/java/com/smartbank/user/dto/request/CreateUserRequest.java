@@ -4,13 +4,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-/**
- * Payload for creating a customer profile via {@code POST /users/internal} (PRD sec 6.7).
- *
- * <p>Bean Validation covers structural presence only; the '@'-in-email and 10-digit-phone
- * rules and uniqueness are enforced in the service layer (PRD sec 7.2).
- */
 public class CreateUserRequest {
+
+    @NotBlank(message = "id is required")
+    private String id;
 
     @NotBlank(message = "fullName is required")
     private String fullName;
@@ -24,6 +21,14 @@ public class CreateUserRequest {
     @NotNull(message = "address is required")
     @Valid
     private AddressDto address;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getFullName() {
         return fullName;

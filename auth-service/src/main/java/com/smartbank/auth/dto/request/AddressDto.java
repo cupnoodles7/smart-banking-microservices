@@ -1,6 +1,8 @@
-package com.smartbank.user.dto.request;
+package com.smartbank.auth.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+
+//Postal address collected at registration and forwarded to the User Service when the customer profile is created
 public class AddressDto {
 
     @NotBlank(message = "address.line1 is required")

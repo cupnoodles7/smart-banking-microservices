@@ -4,10 +4,7 @@ import com.smartbank.user.dto.request.CreateUserRequest;
 import com.smartbank.user.dto.request.UpdateUserRequest;
 import com.smartbank.user.dto.response.UserResponse;
 
-/**
- * Customer-profile use cases (PRD sec 6.3). All flows go Request DTO -> Entity ->
- * Response DTO; the entity never leaves this layer (PRD sec 6.10).
- */
+
 public interface UserService {
 
     /** Fetch a profile by id, or throw {@code UserNotFoundException}. */
@@ -18,4 +15,11 @@ public interface UserService {
 
     /** Create a profile (called service-to-service during registration). */
     UserResponse createUser(CreateUserRequest request);
+
+    /**
+     * Delete a profile by id. Idempotent: a no-op if the id does not exist. Used by the
+     * Auth Service as a best-effort compensating action when a credential write fails
+     * after the profile was created (PRD sec 6.16).
+     */
+    void deleteById(String id);
 }

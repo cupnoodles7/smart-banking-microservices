@@ -54,3 +54,13 @@ application-local.yml
 application-local.properties
 .env
 .env.local
+
+# ---- Local docs / notes (not for the repo) ----
+AUTH_SERVICE_NOTES.md
+
+# ---- run-all.sh runtime artifacts ----
+.run/
+
+.claude
+.github/modernize/java-upgrade
+.run
