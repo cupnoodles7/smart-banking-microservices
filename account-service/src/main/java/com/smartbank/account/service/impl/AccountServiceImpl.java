@@ -49,12 +49,9 @@ public class AccountServiceImpl implements AccountService {
     private final RestTemplate restTemplate;
     private final TransactionRecorder transactionRecorder;
     private final boolean userValidationEnabled;
-
-    // Business limits (PRD sec 6.5.1), bound directly from centralised config.
     private final BigDecimal savingsMaxBalance;
     private final BigDecimal savingsDailyTransferLimit;
     private final int savingsDailyTransactionLimit;
-
     private final BigDecimal currentMaxBalance;
     private final BigDecimal currentDailyTransferLimit;
     private final int currentDailyTransactionLimit;
@@ -250,21 +247,11 @@ public class AccountServiceImpl implements AccountService {
                 amount, savedFrom.getUpdatedAt());
         return AccountResponse.from(savedFrom);
     }
-
-    // ---- helpers ----
-
-    // Missing identity -> 403, same status User Service's ForbiddenException uses for
-    // the same situation (no separate "401 missing header" concept in this codebase).
     private void requireCallerId(String callerCustomerId) {
         if (!StringUtils.hasText(callerCustomerId)) {
             throw new UnauthorizedAccountAccessException("Missing caller identity (X-Customer-Id)");
         }
     }
-
-    // Confirms callerCustomerId is a real, registered customer before an account is
-    // created under it, by calling User Service's GET /users/{id} (self-access only,
-    // so callerCustomerId is sent both as the path id and the X-Customer-Id header).
-    // Skippable locally via user-service.validation-enabled: false.
     private void validateCustomerExists(String callerCustomerId) {
         if (!userValidationEnabled) {
             log.warn("Skipping User Service validation for customer {} - "
@@ -316,8 +303,6 @@ public class AccountServiceImpl implements AccountService {
     private boolean isNotPositive(BigDecimal amount) {
         return amount == null || amount.compareTo(BigDecimal.ZERO) <= 0;
     }
-
-    // Debits the account and advances both counters that WITHDRAW/TRANSFER count against.
     private void debit(Account account, BigDecimal amount) {
         account.setBalance(account.getBalance().subtract(amount));
         account.setDailyTransferredAmount(account.getDailyTransferredAmount().add(amount));
@@ -325,8 +310,6 @@ public class AccountServiceImpl implements AccountService {
         account.setUpdatedAt(LocalDateTime.now());
     }
 
-    // Daily transaction-count and daily-transfer-amount caps for WITHDRAW/TRANSFER (PRD sec 6.5.1).
-    // receiverId is the same account for WITHDRAW, or the target account for TRANSFER.
     private void applyOutgoingLimitChecks(String callerCustomerId, TransactionType type,
                                            Account account, BigDecimal amount) {
         applyOutgoingLimitChecks(callerCustomerId, type, account, amount, account.getId());

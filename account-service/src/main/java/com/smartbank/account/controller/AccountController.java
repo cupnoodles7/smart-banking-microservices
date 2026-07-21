@@ -36,7 +36,6 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    /** Create a SAVINGS or CURRENT account for the calling customer (PRD sec 6.10). */
     @PostMapping
     @Operation(summary = "Open a new account",
             description = "Creates a SAVINGS or CURRENT account for the calling customer. The owner "
@@ -57,7 +56,6 @@ public ResponseEntity<AccountResponse> createAccount(
             .body(accountService.createAccount(customerId, request));
 }
 
-    /** Credit an account owned by the caller (PRD sec 6.10). */
     @PostMapping("/deposit")
     @Operation(summary = "Deposit into an account",
             description = "Credits an account owned by the caller.")
@@ -73,7 +71,6 @@ public ResponseEntity<AccountResponse> createAccount(
         return ResponseEntity.ok(accountService.deposit(customerId, request));
     }
 
-    /** Debit an account owned by the caller (PRD sec 6.10). */
     @PostMapping("/withdraw")
     @Operation(summary = "Withdraw from an account",
             description = "Debits an account owned by the caller, subject to balance and daily limits.")
@@ -89,7 +86,6 @@ public ResponseEntity<AccountResponse> createAccount(
         return ResponseEntity.ok(accountService.withdraw(customerId, request));
     }
 
-    /** Move money from an account owned by the caller to another account (PRD sec 6.10). */
     @PostMapping("/transfer")
     @Operation(summary = "Transfer between accounts",
             description = "Moves money from an account owned by the caller to another account.")
@@ -105,7 +101,6 @@ public ResponseEntity<AccountResponse> createAccount(
         return ResponseEntity.ok(accountService.transfer(customerId, request));
     }
 
-    /** List all accounts owned by a customer; a caller may only list their own (PRD sec 6.10). */
     @GetMapping("/customer/{customerId}")
     @Operation(summary = "List a customer's accounts",
             description = "Lists all accounts owned by a customer. A caller may only list their own.")
