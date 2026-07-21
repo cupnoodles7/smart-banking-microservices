@@ -11,10 +11,6 @@ public interface TransactionRepository extends MongoRepository<Transaction, Stri
 
     Optional<Transaction> findByIdempotencyKey(String idempotencyKey);
 
-    Page<Transaction> findBySenderId(String senderId, Pageable pageable);
-
-    Page<Transaction> findByReceiverId(String receiverId, Pageable pageable);
-
     Page<Transaction> findBySenderIdOrReceiverId(String senderId, String receiverId, Pageable pageable);
 
     Page<Transaction> findByCustomerId(String customerId, Pageable pageable);
