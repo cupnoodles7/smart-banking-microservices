@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
+// Exposes REST APIs for account creation, balance management, and fund transfers.
 @RestController
 @RequestMapping("/accounts")
 @Tag(name = "Accounts", description = "Savings and current accounts - open, deposit, withdraw, transfer (PRD sec 6.10)")

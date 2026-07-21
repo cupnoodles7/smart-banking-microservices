@@ -8,14 +8,11 @@ import com.smartbank.user.dto.response.UserResponse;
 import com.smartbank.user.entity.User;
 import org.springframework.stereotype.Component;
 
-/**
- * Converts between DTOs and the {@link User} entity so controllers never touch the
- * entity directly: Request DTO -> Entity -> Response DTO (PRD sec 6.10).
- */
+
 @Component
 public class UserMapper {
 
-    /** Build a new entity from a create request. Timestamps are set by auditing. */
+    // Build a new entity from a create request. Timestamps are set by auditing.
     public User toEntity(CreateUserRequest request) {
         User user = new User();
         // Auth supplies the id so the document _id == the system-wide customerId.
@@ -27,7 +24,7 @@ public class UserMapper {
         return user;
     }
 
-    /** Apply an update request onto an existing, already-loaded entity in place. */
+    // Apply an update request onto an existing, already-loaded entity in place. 
     public void applyUpdate(User user, UpdateUserRequest request) {
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());

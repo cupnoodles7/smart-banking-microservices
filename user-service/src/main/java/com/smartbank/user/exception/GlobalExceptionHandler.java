@@ -50,14 +50,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, request);
     }
 
-    /** DB failure - logged at ERROR per the logging strategy (PRD sec 6.13). */
+    /** DB failure - logged at ERROR per the logging strategy  */
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ErrorResponse> handleDataAccess(DataAccessException ex, HttpServletRequest request) {
         log.error("Database failure on {} {}", request.getMethod(), request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "A database error occurred", request);
     }
 
-    /** Anything unhandled - logged at ERROR per the logging strategy (PRD sec 6.13). */
+    // Anything unhandled - logged at ERROR per the logging strategy. 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);

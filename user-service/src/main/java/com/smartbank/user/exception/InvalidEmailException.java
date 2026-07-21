@@ -1,6 +1,6 @@
 package com.smartbank.user.exception;
 
-/** Raised when an email is missing '@' (PRD sec 7.2 -> 400). */
+// Raised when an email is missing '@'
 public class InvalidEmailException extends RuntimeException {
 
     public InvalidEmailException(String message) {

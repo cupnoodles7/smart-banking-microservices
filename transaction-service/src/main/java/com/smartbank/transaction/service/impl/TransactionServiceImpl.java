@@ -25,12 +25,6 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.Set;
 
-/**
- * Ledger implementation: append-only writes and read-only queries (PRD sec 6.5, 6.7).
- *
- * <p>All business validation lives here (not only in DTO annotations). A record is
- * written exactly once with its final SUCCESS/FAILED state and is never updated.
- */
 @Service
 public class TransactionServiceImpl implements TransactionService {
 

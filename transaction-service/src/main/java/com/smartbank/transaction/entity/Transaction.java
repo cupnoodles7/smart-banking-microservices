@@ -12,8 +12,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-// One immutable ledger record; written exactly once in its final state (PRD sec 6.5).
-// The service never updates or deletes a stored document - it is a pure ledger.
 @Document(collection = "transactions")
 @Data
 @Builder
@@ -22,32 +20,32 @@ import java.time.LocalDateTime;
 public class Transaction {
 
     @Id
-    private String id; // Mongo document id
+    private String id;
 
     @Indexed
-    private String customerId; // owner of the transaction; drives GET /transactions/customer/{id}
+    private String customerId; 
 
-    private TransactionType transactionType; // DEPOSIT, WITHDRAW, TRANSFER, ...
+    private TransactionType transactionType; 
 
-    private SenderType senderType; // ACCOUNT or WALLET
+    private SenderType senderType; 
     @Indexed
-    private String senderId;       // account/wallet id that sent the money
+    private String senderId;       
 
-    private ReceiverType receiverType; // ACCOUNT, WALLET or MERCHANT
+    private ReceiverType receiverType; 
     @Indexed
-    private String receiverId;         // account/wallet/merchant id that received it
+    private String receiverId;         
 
-    private BigDecimal amount;      // attempted/settled amount
+    private BigDecimal amount;      
 
     @Builder.Default
-    private String currency = TransactionConstants.DEFAULT_CURRENCY; // defaults to INR (PRD sec 6.5)
+    private String currency = TransactionConstants.DEFAULT_CURRENCY; 
 
-    private TransactionStatus status;     // SUCCESS or FAILED
-    private FailureReason failureReason;   // NONE when SUCCESS
+    private TransactionStatus status;     
+    private FailureReason failureReason;   
 
     @Indexed(unique = true, sparse = true)
-    private String idempotencyKey; // dedup key; unique per record (PRD sec 6.15)
+    private String idempotencyKey; 
 
-    private LocalDateTime initiatedAt; // when the owning service began the operation
-    private LocalDateTime completedAt; // when the final outcome was known
+    private LocalDateTime initiatedAt; 
+    private LocalDateTime completedAt; 
 }

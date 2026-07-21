@@ -13,17 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-/**
- * Translates exceptions into the standard error shape (PRD sec 6.14):
- * <pre>{ "timestamp", "status", "error", "message", "path" }</pre>
- *
- * <ul>
- *   <li>400 - invalid request data (bean validation, amount, self-transfer, malformed request)</li>
- *   <li>404 - transaction not found</li>
- *   <li>409 - genuine duplicate / conflicting write</li>
- *   <li>500 - MongoDB or otherwise unexpected failure</li>
- * </ul>
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

@@ -2,13 +2,8 @@ spring:
   application:
     name: wallet-service
   config:
-    # Authoritative config (port, MongoDB URI, business limits, Eureka) is served by the
-    # Config Server from config-repo/wallet-service.yml and overrides the local fallbacks below.
-    # 'optional:' lets the service still boot for local development if the Config
-    # Server is down (it then falls back to the values in this file).
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 
-# ---- Local fallbacks (used only when the Config Server is unreachable) ----
 server:
   port: 8084
 
@@ -24,9 +19,6 @@ management:
     web:
       exposure:
         include: health,info
-
-# Business limits (PRD sec 6.6), read via @Value in WalletServiceImpl.
-# Also duplicated in config-repo/wallet-service.yml as the authoritative source.
 bank:
   wallet:
     max-balance: 50000

@@ -7,19 +7,11 @@ import com.smartbank.user.dto.response.UserResponse;
 
 public interface UserService {
 
-    /** Fetch a profile by id, or throw {@code UserNotFoundException}. */
     UserResponse getById(String id);
 
-    /** Update a profile after validating field format and uniqueness. */
     UserResponse updateUser(String id, UpdateUserRequest request);
 
-    /** Create a profile (called service-to-service during registration). */
     UserResponse createUser(CreateUserRequest request);
 
-    /**
-     * Delete a profile by id. Idempotent: a no-op if the id does not exist. Used by the
-     * Auth Service as a best-effort compensating action when a credential write fails
-     * after the profile was created (PRD sec 6.16).
-     */
     void deleteById(String id);
 }

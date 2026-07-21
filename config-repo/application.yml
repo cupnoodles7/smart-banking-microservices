@@ -7,12 +7,11 @@ eureka:
   instance:
     prefer-ip-address: true
 
-# JWT settings shared between the Auth Service (issuer) and API Gateway (validator).
 security:
   jwt:
     secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
-    access-token-expiry-ms: 900000       # 15 minutes  (PRD sec 6.8)
-    refresh-token-expiry-ms: 604800000   # 7 days      (PRD sec 6.8)
+    access-token-expiry-ms: 900000       
+    refresh-token-expiry-ms: 604800000   
 
 management:
   endpoints:

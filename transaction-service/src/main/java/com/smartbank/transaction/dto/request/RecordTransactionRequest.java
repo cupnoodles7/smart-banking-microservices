@@ -37,13 +37,13 @@ public class RecordTransactionRequest {
     private BigDecimal amount;
 
     @NotNull
-    private TransactionStatus status; // SUCCESS or FAILED - caller already knows the outcome
+    private TransactionStatus status; 
 
-    private FailureReason failureReason; // defaults to NONE if the caller omits it
+    private FailureReason failureReason; 
 
     @NotBlank
-    private String idempotencyKey; // required; makes retries safe and de-duplicated 
+    private String idempotencyKey; 
 
-    private LocalDateTime initiatedAt; // optional; defaults to now if omitted
-    private LocalDateTime completedAt; // optional; defaults to now if omitted
+    private LocalDateTime initiatedAt; 
+    private LocalDateTime completedAt; 
 }

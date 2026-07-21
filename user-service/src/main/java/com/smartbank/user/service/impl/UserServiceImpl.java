@@ -16,11 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-/**
- * Profile use cases. Discipline: validate first, then mutate (PRD sec 7.2).
- * Logs INFO on successful create/update, WARN on validation failures; DB failures
- * surface to {@code GlobalExceptionHandler}, which logs them at ERROR (PRD sec 6.13).
- */
 @Service
 public class UserServiceImpl implements UserService {
 

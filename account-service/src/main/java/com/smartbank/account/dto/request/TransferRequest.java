@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
-
+// Request DTO containing sender, receiver, and transfer amount information.
 @Data
 public class TransferRequest {
 

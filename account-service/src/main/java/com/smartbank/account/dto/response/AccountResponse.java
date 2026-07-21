@@ -9,8 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 // Read model returned to callers so the MongoDB entity is never exposed directly
-// (PRD sec 6.13 DTO strategy). Entity -> DTO mapping lives here as a static
-// factory rather than a separate mapper class.
 @Data
 @Builder
 public class AccountResponse {
