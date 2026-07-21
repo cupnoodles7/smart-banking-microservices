@@ -1,0 +1,428 @@
+{
+  "info": {
+    "_postman_id": "b7a1e2c0-5f3a-4a2b-9c11-smartbanking01",
+    "name": "Smart Banking & Wallet System",
+    "description": "All endpoints across auth, user, account, wallet, transaction + gateway end-to-end. Run the folders top-to-bottom (or use the Collection Runner): Auth -> Account -> Wallet -> Transaction. Login captures accessToken/customerId; create requests capture accountId/walletId/etc into collection variables. Business folders hit each service DIRECTLY with an X-Customer-Id header (works without the gateway); the 'Gateway (end-to-end)' folder proves JWT routing through :8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:8080" },
+    { "key": "authUrl", "value": "http://localhost:8081" },
+    { "key": "userUrl", "value": "http://localhost:8082" },
+    { "key": "accountUrl", "value": "http://localhost:8083" },
+    { "key": "walletUrl", "value": "http://localhost:8084" },
+    { "key": "txnUrl", "value": "http://localhost:8085" },
+    { "key": "username", "value": "alice" },
+    { "key": "email", "value": "alice@example.com" },
+    { "key": "password", "value": "secret123" },
+    { "key": "internalUserApiKey", "value": "change-me-internal-user-service-key" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "customerId", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "accountId", "value": "" },
+    { "key": "accountId2", "value": "" },
+    { "key": "walletId", "value": "" },
+    { "key": "walletId2", "value": "" },
+    { "key": "transactionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Auth (:8081)",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created or 409 duplicate', () => [201,409].includes(pm.response.code));",
+              "try { const j = pm.response.json(); if (j.customerId) pm.collectionVariables.set('customerId', j.customerId); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{username}}\",\"email\":\"{{email}}\",\"password\":\"{{password}}\",\"fullName\":\"Alice Anderson\",\"phoneNumber\":\"9990001111\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{authUrl}}/auth/register", "host": [ "{{authUrl}}" ], "path": [ "auth", "register" ] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('login 200', () => pm.response.code === 200);",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', j.token);",
+              "pm.collectionVariables.set('refreshToken', j.refreshToken);",
+              "pm.collectionVariables.set('customerId', j.customerId);",
+              "pm.collectionVariables.set('username', j.username);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"usernameOrEmail\":\"{{username}}\",\"password\":\"{{password}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{authUrl}}/auth/login", "host": [ "{{authUrl}}" ], "path": [ "auth", "login" ] }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('refresh 200', () => pm.response.code === 200);",
+              "try { const j = pm.response.json(); if (j.token) pm.collectionVariables.set('accessToken', j.token); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{refreshToken}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{authUrl}}/auth/refresh", "host": [ "{{authUrl}}" ], "path": [ "auth", "refresh" ] }
+          }
+        },
+        {
+          "name": "Validate token",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{authUrl}}/auth/validate", "host": [ "{{authUrl}}" ], "path": [ "auth", "validate" ] }
+          }
+        },
+        {
+          "name": "Get current user (/me)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Auth-Username", "value": "{{username}}" } ],
+            "url": { "raw": "{{authUrl}}/auth/me", "host": [ "{{authUrl}}" ], "path": [ "auth", "me" ] }
+          }
+        },
+        {
+          "name": "Get all users (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Auth-Roles", "value": "ADMIN" } ],
+            "url": { "raw": "{{authUrl}}/auth/users", "host": [ "{{authUrl}}" ], "path": [ "auth", "users" ] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{authUrl}}/auth/logout", "host": [ "{{authUrl}}" ], "path": [ "auth", "logout" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - User (:8082)",
+      "item": [
+        {
+          "name": "Create user (internal, API key)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created', () => pm.response.code === 201);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('userId', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Internal-Api-Key", "value": "{{internalUserApiKey}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"fullName\":\"Alice Anderson\",\"email\":\"alice.profile@example.com\",\"phoneNumber\":\"9876543210\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{userUrl}}/users/internal", "host": [ "{{userUrl}}" ], "path": [ "users", "internal" ] }
+          }
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Customer-Id", "value": "{{userId}}" } ],
+            "url": { "raw": "{{userUrl}}/users/{{userId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{userId}}" ] },
+            "description": "Ownership check requires X-Customer-Id == path id. user-service treats its Mongo _id as the customerId, so we send the captured userId as the caller."
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{userId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"fullName\":\"Alice A. Anderson\",\"email\":\"alice.profile@example.com\",\"phoneNumber\":\"9876543211\",\"address\":{\"line1\":\"99 Brigade Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560025\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{userUrl}}/users/{{userId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{userId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Account (:8083)",
+      "item": [
+        {
+          "name": "Create account (SAVINGS)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created', () => pm.response.code === 201);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('accountId', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"accountType\":\"SAVINGS\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{accountUrl}}/accounts", "host": [ "{{accountUrl}}" ], "path": [ "accounts" ] }
+          }
+        },
+        {
+          "name": "Create account 2 (CURRENT)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created', () => pm.response.code === 201);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('accountId2', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"accountType\":\"CURRENT\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{accountUrl}}/accounts", "host": [ "{{accountUrl}}" ], "path": [ "accounts" ] }
+          }
+        },
+        {
+          "name": "Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":5000}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{accountUrl}}/accounts/deposit", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "deposit" ] }
+          }
+        },
+        {
+          "name": "Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":1000}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{accountUrl}}/accounts/withdraw", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "withdraw" ] }
+          }
+        },
+        {
+          "name": "Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"fromAccountId\":\"{{accountId}}\",\"toAccountId\":\"{{accountId2}}\",\"amount\":500}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{accountUrl}}/accounts/transfer", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "transfer" ] }
+          }
+        },
+        {
+          "name": "List accounts by customer",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Customer-Id", "value": "{{customerId}}" } ],
+            "url": { "raw": "{{accountUrl}}/accounts/customer/{{customerId}}", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "customer", "{{customerId}}" ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Wallet (:8084)",
+      "item": [
+        {
+          "name": "Create wallet (PAYTM)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('2xx', () => pm.response.code < 300);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('walletId', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"linkedAccountId\":\"{{accountId}}\",\"walletType\":\"PAYTM\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{walletUrl}}/wallets", "host": [ "{{walletUrl}}" ], "path": [ "wallets" ] }
+          }
+        },
+        {
+          "name": "Create wallet 2 (PHONEPE)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('2xx', () => pm.response.code < 300);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('walletId2', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"linkedAccountId\":\"{{accountId2}}\",\"walletType\":\"PHONEPE\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{walletUrl}}/wallets", "host": [ "{{walletUrl}}" ], "path": [ "wallets" ] }
+          }
+        },
+        {
+          "name": "Top up wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"walletId\":\"{{walletId}}\",\"amount\":2000,\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{walletUrl}}/wallets/topup", "host": [ "{{walletUrl}}" ], "path": [ "wallets", "topup" ] }
+          }
+        },
+        {
+          "name": "Wallet-to-wallet transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"fromWalletId\":\"{{walletId}}\",\"toWalletId\":\"{{walletId2}}\",\"amount\":300,\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{walletUrl}}/wallets/transfer", "host": [ "{{walletUrl}}" ], "path": [ "wallets", "transfer" ] }
+          }
+        },
+        {
+          "name": "Pay bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"walletId\":\"{{walletId}}\",\"billerId\":\"BILLER-001\",\"amount\":150,\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{walletUrl}}/wallets/pay-bill", "host": [ "{{walletUrl}}" ], "path": [ "wallets", "pay-bill" ] }
+          }
+        },
+        {
+          "name": "List wallets by customer",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Customer-Id", "value": "{{customerId}}" } ],
+            "url": { "raw": "{{walletUrl}}/wallets/customer/{{customerId}}?page=0&size=20", "host": [ "{{walletUrl}}" ], "path": [ "wallets", "customer", "{{customerId}}" ], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Transaction (:8085)",
+      "item": [
+        {
+          "name": "Record transaction (internal)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created', () => pm.response.code === 201);",
+              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('transactionId', j.id); } catch (e) {}"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"customerId\":\"{{customerId}}\",\"transactionType\":\"DEPOSIT\",\"senderType\":\"ACCOUNT\",\"senderId\":\"{{accountId}}\",\"receiverType\":\"ACCOUNT\",\"receiverId\":\"{{accountId}}\",\"amount\":100,\"status\":\"SUCCESS\",\"failureReason\":\"NONE\",\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{txnUrl}}/transactions/internal", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "internal" ] }
+          }
+        },
+        {
+          "name": "Get transaction by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{txnUrl}}/transactions/{{transactionId}}", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "{{transactionId}}" ] }
+          }
+        },
+        {
+          "name": "List by account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{txnUrl}}/transactions/account/{{accountId}}?page=0&size=20", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "account", "{{accountId}}" ], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        },
+        {
+          "name": "List by wallet",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{txnUrl}}/transactions/wallet/{{walletId}}?page=0&size=20", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "wallet", "{{walletId}}" ], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        },
+        {
+          "name": "List by customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{txnUrl}}/transactions/customer/{{customerId}}?page=0&size=20", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "customer", "{{customerId}}" ], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Gateway (end-to-end JWT, :8080)",
+      "description": "Proves routing + JWT validation + identity-header injection through the gateway. Run Auth > Login first (any folder) so accessToken is set. Requires config-server, eureka and all services registered.",
+      "item": [
+        {
+          "name": "Login via gateway",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('login 200', () => pm.response.code === 200);",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('accessToken', j.token);",
+              "pm.collectionVariables.set('customerId', j.customerId);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\"usernameOrEmail\":\"{{username}}\",\"password\":\"{{password}}\"}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": [ "{{gatewayUrl}}" ], "path": [ "auth", "login" ] }
+          }
+        },
+        {
+          "name": "List accounts via gateway (Bearer only)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{gatewayUrl}}/accounts/customer/{{customerId}}", "host": [ "{{gatewayUrl}}" ], "path": [ "accounts", "customer", "{{customerId}}" ] },
+            "description": "No X-Customer-Id sent by hand: the gateway extracts it from the JWT and injects it downstream."
+          }
+        },
+        {
+          "name": "Protected route without token -> 401",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('rejected 401', () => pm.response.code === 401);"
+            ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{gatewayUrl}}/accounts/customer/{{customerId}}", "host": [ "{{gatewayUrl}}" ], "path": [ "accounts", "customer", "{{customerId}}" ] }
+          }
+        }
+      ]
+    }
+  ]
+}
