@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "b7a1e2c0-5f3a-4a2b-9c11-smartbanking01",
+    "_postman_id": "b7a1e2c0-5f3a-4a2b-9c11-smartbanking02",
     "name": "Smart Banking & Wallet System",
-    "description": "All endpoints across auth, user, account, wallet, transaction + gateway end-to-end. Run the folders top-to-bottom (or use the Collection Runner): Auth -> Account -> Wallet -> Transaction. Login captures accessToken/customerId; create requests capture accountId/walletId/etc into collection variables. Business folders hit each service DIRECTLY with an X-Customer-Id header (works without the gateway); the 'Gateway (end-to-end)' folder proves JWT routing through :8080.",
+    "description": "End-to-end collection for all services (auth, user, account, wallet, transaction) plus the gateway.\n\nRun the folders top-to-bottom (or use the Collection Runner): Auth -> User -> Account -> Wallet -> Transaction -> Gateway.\n\nHOW IT WORKS\n- The 'Auth > Register' request generates a UNIQUE username/email per run (a pre-request script), so every full run creates a brand-new customer whose profile is auto-created in the User Service. This avoids stale-user failures (a customer that has no profile is rejected by account/wallet with 404/503).\n- Register captures customerId; Login captures accessToken/refreshToken/customerId; create requests capture accountId/walletId/transactionId into collection variables.\n- Business folders hit each service DIRECTLY with an X-Customer-Id header (works without the gateway). The 'Gateway' folder proves JWT routing + identity-header injection through :8080.\n\nPREREQS: config-server, eureka and all services must be UP (./run-all.sh). MongoDB on :27017. Build/run with JDK 21.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,12 +14,15 @@
     { "key": "txnUrl", "value": "http://localhost:8085" },
     { "key": "username", "value": "alice" },
     { "key": "email", "value": "alice@example.com" },
+    { "key": "phone", "value": "9990001111" },
     { "key": "password", "value": "secret123" },
     { "key": "internalUserApiKey", "value": "change-me-internal-user-service-key" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "customerId", "value": "" },
-    { "key": "userId", "value": "" },
+    { "key": "internalUserId", "value": "" },
+    { "key": "internalEmail", "value": "" },
+    { "key": "internalPhone", "value": "" },
     { "key": "accountId", "value": "" },
     { "key": "accountId2", "value": "" },
     { "key": "walletId", "value": "" },
@@ -33,24 +36,38 @@
         {
           "name": "Register",
           "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "// Fresh user per run so the profile is created cleanly and downstream steps pass.",
+              "// email + phone are unique-constrained in the User Service, so make them unique per run.",
+              "const ts = Date.now();",
+              "pm.collectionVariables.set('username', 'alice_' + ts);",
+              "pm.collectionVariables.set('email', 'alice_' + ts + '@example.com');",
+              "pm.collectionVariables.set('phone', String(ts).slice(-10));"
+            ] } },
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 created or 409 duplicate', () => [201,409].includes(pm.response.code));",
-              "try { const j = pm.response.json(); if (j.customerId) pm.collectionVariables.set('customerId', j.customerId); } catch (e) {}"
+              "pm.test('registered (201) or duplicate (409)', () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));",
+              "if (pm.response.code === 201) {",
+              "  const j = pm.response.json();",
+              "  pm.test('returns customerId', () => pm.expect(j.customerId).to.be.a('string').and.not.empty);",
+              "  pm.collectionVariables.set('customerId', j.customerId);",
+              "}"
             ] } }
           ],
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\"username\":\"{{username}}\",\"email\":\"{{email}}\",\"password\":\"{{password}}\",\"fullName\":\"Alice Anderson\",\"phoneNumber\":\"9990001111\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{authUrl}}/auth/register", "host": [ "{{authUrl}}" ], "path": [ "auth", "register" ] }
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{username}}\",\"email\":\"{{email}}\",\"password\":\"{{password}}\",\"fullName\":\"Alice Anderson\",\"phoneNumber\":\"{{phone}}\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{authUrl}}/auth/register", "host": [ "{{authUrl}}" ], "path": [ "auth", "register" ] },
+            "description": "Creates credentials AND (service-to-service) the customer profile in the User Service, using the generated customerId as the profile id."
           }
         },
         {
           "name": "Login",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('login 200', () => pm.response.code === 200);",
+              "pm.test('login 200', () => pm.response.to.have.status(200));",
               "const j = pm.response.json();",
+              "pm.test('returns access token', () => pm.expect(j.token).to.be.a('string').and.not.empty);",
               "pm.collectionVariables.set('accessToken', j.token);",
               "pm.collectionVariables.set('refreshToken', j.refreshToken);",
               "pm.collectionVariables.set('customerId', j.customerId);",
@@ -68,8 +85,9 @@
           "name": "Refresh token",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('refresh 200', () => pm.response.code === 200);",
-              "try { const j = pm.response.json(); if (j.token) pm.collectionVariables.set('accessToken', j.token); } catch (e) {}"
+              "pm.test('refresh 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "if (j.token) pm.collectionVariables.set('accessToken', j.token);"
             ] } }
           ],
           "request": {
@@ -81,6 +99,12 @@
         },
         {
           "name": "Validate token",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('valid token 200', () => pm.response.to.have.status(200));",
+              "pm.test('valid=true', () => pm.expect(pm.response.json().valid).to.eql(true));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
@@ -89,14 +113,25 @@
         },
         {
           "name": "Get current user (/me)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('me 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [ { "key": "X-Auth-Username", "value": "{{username}}" } ],
-            "url": { "raw": "{{authUrl}}/auth/me", "host": [ "{{authUrl}}" ], "path": [ "auth", "me" ] }
+            "url": { "raw": "{{authUrl}}/auth/me", "host": [ "{{authUrl}}" ], "path": [ "auth", "me" ] },
+            "description": "Behind the gateway the X-Auth-Username header is injected from the JWT; here we send it by hand to hit the service directly."
           }
         },
         {
           "name": "Get all users (admin)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('admin list 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [ { "key": "X-Auth-Roles", "value": "ADMIN" } ],
@@ -105,6 +140,11 @@
         },
         {
           "name": "Logout",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('logout 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
@@ -117,11 +157,51 @@
       "name": "01 - User (:8082)",
       "item": [
         {
-          "name": "Create user (internal, API key)",
+          "name": "Get my profile (created at registration)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 created', () => pm.response.code === 201);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('userId', j.id); } catch (e) {}"
+              "pm.test('profile 200', () => pm.response.to.have.status(200));",
+              "pm.test('id == customerId', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('customerId')));"
+            ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-Customer-Id", "value": "{{customerId}}" } ],
+            "url": { "raw": "{{userUrl}}/users/{{customerId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{customerId}}" ] },
+            "description": "Registration auto-creates the profile with _id == customerId. Ownership check requires X-Customer-Id == path id."
+          }
+        },
+        {
+          "name": "Update my profile",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('update 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Customer-Id", "value": "{{customerId}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"fullName\":\"Alice A. Anderson\",\"email\":\"{{email}}\",\"phoneNumber\":\"{{phone}}\",\"address\":{\"line1\":\"99 Brigade Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560025\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{userUrl}}/users/{{customerId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{customerId}}" ] }
+          }
+        },
+        {
+          "name": "Create user (internal, API key)",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "// Internal endpoint requires the caller to supply the profile id. Use fresh id/email/phone so this demo never collides (User Service enforces unique email + phone).",
+              "const ts = Date.now();",
+              "pm.collectionVariables.set('internalUserId', 'cust-' + ts);",
+              "pm.collectionVariables.set('internalEmail', 'internal.demo.' + ts + '@example.com');",
+              "pm.collectionVariables.set('internalPhone', String(ts).slice(-10));"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.test('echoes id', () => pm.expect(j.id).to.eql(pm.collectionVariables.get('internalUserId')));"
             ] } }
           ],
           "request": {
@@ -130,29 +210,23 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "X-Internal-Api-Key", "value": "{{internalUserApiKey}}" }
             ],
-            "body": { "mode": "raw", "raw": "{\"fullName\":\"Alice Anderson\",\"email\":\"alice.profile@example.com\",\"phoneNumber\":\"9876543210\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{userUrl}}/users/internal", "host": [ "{{userUrl}}" ], "path": [ "users", "internal" ] }
+            "body": { "mode": "raw", "raw": "{\"id\":\"{{internalUserId}}\",\"fullName\":\"Internal Demo\",\"email\":\"{{internalEmail}}\",\"phoneNumber\":\"{{internalPhone}}\",\"address\":{\"line1\":\"12 MG Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560001\"}}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{userUrl}}/users/internal", "host": [ "{{userUrl}}" ], "path": [ "users", "internal" ] },
+            "description": "Service-to-service endpoint the Auth Service uses during registration. Requires the X-Internal-Api-Key header and the profile 'id' (the customerId). Not exposed through the gateway."
           }
         },
         {
-          "name": "Get user by id",
+          "name": "Delete user (internal, compensating)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('204 no content', () => pm.response.to.have.status(204));"
+            ] } }
+          ],
           "request": {
-            "method": "GET",
-            "header": [ { "key": "X-Customer-Id", "value": "{{userId}}" } ],
-            "url": { "raw": "{{userUrl}}/users/{{userId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{userId}}" ] },
-            "description": "Ownership check requires X-Customer-Id == path id. user-service treats its Mongo _id as the customerId, so we send the captured userId as the caller."
-          }
-        },
-        {
-          "name": "Update user",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "X-Customer-Id", "value": "{{userId}}" }
-            ],
-            "body": { "mode": "raw", "raw": "{\"fullName\":\"Alice A. Anderson\",\"email\":\"alice.profile@example.com\",\"phoneNumber\":\"9876543211\",\"address\":{\"line1\":\"99 Brigade Road\",\"city\":\"Bengaluru\",\"state\":\"KA\",\"pincode\":\"560025\"}}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{userUrl}}/users/{{userId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "{{userId}}" ] }
+            "method": "DELETE",
+            "header": [ { "key": "X-Internal-Api-Key", "value": "{{internalUserApiKey}}" } ],
+            "url": { "raw": "{{userUrl}}/users/internal/{{internalUserId}}", "host": [ "{{userUrl}}" ], "path": [ "users", "internal", "{{internalUserId}}" ] },
+            "description": "Idempotent compensating delete. Auth calls this to remove an orphan profile if the credential write fails after profile creation. Cleans up the demo profile created above."
           }
         }
       ]
@@ -164,8 +238,9 @@
           "name": "Create account (SAVINGS)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 created', () => pm.response.code === 201);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('accountId', j.id); } catch (e) {}"
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('accountId', j.id);"
             ] } }
           ],
           "request": {
@@ -182,8 +257,9 @@
           "name": "Create account 2 (CURRENT)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 created', () => pm.response.code === 201);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('accountId2', j.id); } catch (e) {}"
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('accountId2', j.id);"
             ] } }
           ],
           "request": {
@@ -198,6 +274,11 @@
         },
         {
           "name": "Deposit",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('deposit 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -210,6 +291,11 @@
         },
         {
           "name": "Withdraw",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('withdraw 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -222,6 +308,11 @@
         },
         {
           "name": "Transfer",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('transfer 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -234,6 +325,12 @@
         },
         {
           "name": "List accounts by customer",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('list 200', () => pm.response.to.have.status(200));",
+              "pm.test('is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [ { "key": "X-Customer-Id", "value": "{{customerId}}" } ],
@@ -249,8 +346,9 @@
           "name": "Create wallet (PAYTM)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('2xx', () => pm.response.code < 300);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('walletId', j.id); } catch (e) {}"
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('walletId', j.id);"
             ] } }
           ],
           "request": {
@@ -267,8 +365,9 @@
           "name": "Create wallet 2 (PHONEPE)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('2xx', () => pm.response.code < 300);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('walletId2', j.id); } catch (e) {}"
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('walletId2', j.id);"
             ] } }
           ],
           "request": {
@@ -283,6 +382,12 @@
         },
         {
           "name": "Top up wallet",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('topup 200', () => pm.response.to.have.status(200));",
+              "pm.test('status SUCCESS', () => pm.expect(pm.response.json().status).to.eql('SUCCESS'));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -295,6 +400,12 @@
         },
         {
           "name": "Wallet-to-wallet transfer",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('transfer 200', () => pm.response.to.have.status(200));",
+              "pm.test('status SUCCESS', () => pm.expect(pm.response.json().status).to.eql('SUCCESS'));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -307,6 +418,12 @@
         },
         {
           "name": "Pay bill",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('pay-bill 200', () => pm.response.to.have.status(200));",
+              "pm.test('status SUCCESS', () => pm.expect(pm.response.json().status).to.eql('SUCCESS'));"
+            ] } }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -319,6 +436,11 @@
         },
         {
           "name": "List wallets by customer",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('list 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [ { "key": "X-Customer-Id", "value": "{{customerId}}" } ],
@@ -334,19 +456,26 @@
           "name": "Record transaction (internal)",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('201 created', () => pm.response.code === 201);",
-              "try { const j = pm.response.json(); if (j.id) pm.collectionVariables.set('transactionId', j.id); } catch (e) {}"
+              "pm.test('201 created', () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.collectionVariables.set('transactionId', j.id);"
             ] } }
           ],
           "request": {
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\"customerId\":\"{{customerId}}\",\"transactionType\":\"DEPOSIT\",\"senderType\":\"ACCOUNT\",\"senderId\":\"{{accountId}}\",\"receiverType\":\"ACCOUNT\",\"receiverId\":\"{{accountId}}\",\"amount\":100,\"status\":\"SUCCESS\",\"failureReason\":\"NONE\",\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{txnUrl}}/transactions/internal", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "internal" ] }
+            "url": { "raw": "{{txnUrl}}/transactions/internal", "host": [ "{{txnUrl}}" ], "path": [ "transactions", "internal" ] },
+            "description": "Idempotent on idempotencyKey. Enums: transactionType DEPOSIT|WITHDRAW|TRANSFER|WALLET_TOPUP|WALLET_TRANSFER|BILL_PAYMENT; senderType ACCOUNT|WALLET; receiverType ACCOUNT|WALLET|MERCHANT; status SUCCESS|FAILED; failureReason NONE|INVALID_AMOUNT|INVALID_ACCOUNT|INVALID_WALLET|INSUFFICIENT_BALANCE|DAILY_LIMIT_EXCEEDED|WALLET_LIMIT_EXCEEDED|SELF_TRANSFER."
           }
         },
         {
           "name": "Get transaction by id",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('get 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -355,6 +484,11 @@
         },
         {
           "name": "List by account",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('list 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -363,6 +497,11 @@
         },
         {
           "name": "List by wallet",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('list 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -371,6 +510,11 @@
         },
         {
           "name": "List by customer",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('list 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -381,13 +525,13 @@
     },
     {
       "name": "05 - Gateway (end-to-end JWT, :8080)",
-      "description": "Proves routing + JWT validation + identity-header injection through the gateway. Run Auth > Login first (any folder) so accessToken is set. Requires config-server, eureka and all services registered.",
+      "description": "Proves routing + JWT validation + identity-header injection through the gateway. Run Auth > Register + Login first so customerId/accessToken are set. Requires config-server, eureka and all services registered.",
       "item": [
         {
           "name": "Login via gateway",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('login 200', () => pm.response.code === 200);",
+              "pm.test('login 200', () => pm.response.to.have.status(200));",
               "const j = pm.response.json();",
               "pm.collectionVariables.set('accessToken', j.token);",
               "pm.collectionVariables.set('customerId', j.customerId);"
@@ -402,6 +546,12 @@
         },
         {
           "name": "List accounts via gateway (Bearer only)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('routed + authorized 200', () => pm.response.to.have.status(200));",
+              "pm.test('is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ] } }
+          ],
           "request": {
             "method": "GET",
             "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
@@ -413,7 +563,7 @@
           "name": "Protected route without token -> 401",
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [
-              "pm.test('rejected 401', () => pm.response.code === 401);"
+              "pm.test('rejected 401', () => pm.response.to.have.status(401));"
             ] } }
           ],
           "request": {
