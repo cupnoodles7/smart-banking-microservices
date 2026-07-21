@@ -32,9 +32,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
 
-    // Headers downstream services trust as gateway-asserted identity, plus the
-    // service-to-service key. A client must never supply these, so they are
-    // stripped from every inbound request before the gateway sets its own.
+    // Gateway-asserted headers; stripped from every inbound request so a client can't spoof them.
     private static final List<String> TRUSTED_HEADERS = List.of(
             "X-Auth-Username", "X-Customer-Id", "X-User-Email", "X-Auth-Roles", "X-Internal-Api-Key");
 
@@ -52,8 +50,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        // Strip any client-supplied trusted headers up front — on every route,
-        // open or not — so they can only ever carry values the gateway sets.
         ServerHttpRequest scrubbed = request.mutate()
                 .headers(h -> TRUSTED_HEADERS.forEach(h::remove))
                 .build();
@@ -70,7 +66,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(BEARER_PREFIX.length());
         try {
             Claims claims = jwtService.parse(token);
-            // Only access tokens are accepted at the edge
             if (!"access".equals(claims.get("type"))) {
                 log.warn("Rejected request to {}: token is not an access token", path);
                 return unauthorized(exchange, path, "Access token required");

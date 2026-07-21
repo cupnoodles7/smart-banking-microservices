@@ -83,8 +83,6 @@ springdoc:
 # JWT validation
 security:
   jwt:
-    # Required — no default. Must match the Auth Service's JWT_SECRET (>= 256 bits).
-    # Unset => the gateway fails to start (see run-all.sh / .env.example).
     secret: ${JWT_SECRET}
     open-paths:
       - /auth/register

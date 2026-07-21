@@ -70,16 +70,12 @@ if ! nc -z -G2 -w2 localhost 27017 2>/dev/null; then
 fi
 
 # ---- secrets ---------------------------------------------------------------
-# The app configs have NO committed secret defaults — an unset JWT_SECRET /
-# USER_INTERNAL_API_KEY makes a service fail to start (fail-fast). For local dev
-# we load a git-ignored .env if present, otherwise generate ephemeral secrets
-# for this run so nothing usable is ever committed. All services below are
-# children of this script and inherit the exported values.
+# Load .env if present, else generate ephemeral secrets for this run.
 if [ -f "$ROOT/.env" ]; then
   echo "🔑 loading secrets from .env"
   set -a; . "$ROOT/.env"; set +a
 fi
-: "${JWT_SECRET:=$(openssl rand -hex 32)}"              # 64 hex chars = 512 bits, > 256-bit minimum
+: "${JWT_SECRET:=$(openssl rand -hex 32)}"
 : "${USER_INTERNAL_API_KEY:=$(openssl rand -hex 24)}"
 export JWT_SECRET USER_INTERNAL_API_KEY
 echo "🔑 JWT_SECRET and USER_INTERNAL_API_KEY set for this run (create .env to pin stable values)"

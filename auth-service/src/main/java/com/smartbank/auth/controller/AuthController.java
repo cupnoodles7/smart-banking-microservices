@@ -143,10 +143,22 @@ public class AuthController {
     })
     public ResponseEntity<Iterable<User>> getAllUsers(
             @RequestHeader(value = "X-Auth-Roles", required = false) String rolesHeader) {
-        if (rolesHeader == null || !rolesHeader.contains("ADMIN")) {
+        if (!hasRole(rolesHeader, "ADMIN")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied. Admin role required.");
         }
         return ResponseEntity.ok(authService.getAllUsers());
+    }
+
+    private static boolean hasRole(String rolesHeader, String role) {
+        if (rolesHeader == null || rolesHeader.isBlank()) {
+            return false;
+        }
+        for (String r : rolesHeader.split(",")) {
+            if (r.trim().equals(role)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @PostMapping("/logout")
