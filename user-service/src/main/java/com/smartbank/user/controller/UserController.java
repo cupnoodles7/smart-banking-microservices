@@ -23,10 +23,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Customer-profile endpoints (PRD sec 6.7). Controllers only orchestrate: authorize,
- * delegate to the service, and return a Response DTO - never the entity (PRD sec 6.10).
- */
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -45,10 +41,9 @@ public class UserController {
         this.internalApiProperties = internalApiProperties;
     }
 
-    /**
-     * Fetch a customer profile. JWT-protected at the Gateway; a caller may only read
-     * their own profile (the {@code X-Customer-Id} header must match {@code {id}}).
-     */
+    
+     //Fetch a customer profile. JWT-protected at the Gateway; a caller may only read
+     
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUser(
             @PathVariable String id,
@@ -57,10 +52,8 @@ public class UserController {
         return ResponseEntity.ok(userService.getById(id));
     }
 
-    /**
-     * Update a customer profile. JWT-protected at the Gateway; a caller may only update
-     * their own profile (the {@code X-Customer-Id} header must match {@code {id}}).
-     */
+    
+     // Update a customer profile. JWT-protected at the Gateway; a caller may only update
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable String id,
@@ -70,17 +63,6 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
-    /**
-     * Internal, service-to-service endpoint: the Auth Service calls this to create a
-     * profile during registration. It carries no JWT (the customer has none yet), so it
-     * is not exposed through the Gateway's authenticated routes - internal callers reach
-     * the service directly via Eureka ({@code lb://user-service}).
-     *
-     * <p>No repo-wide service-to-service auth convention exists yet, so this uses a
-     * simple shared internal API-key header ({@code X-Internal-Api-Key}) as a
-     * placeholder. Replace with the platform's chosen internal-auth mechanism (e.g. mTLS
-     * or a signed service token) once one is defined.
-     */
     @PostMapping("/internal")
     public ResponseEntity<UserResponse> createInternal(
             @RequestHeader(value = UserServiceConstants.HEADER_INTERNAL_API_KEY, required = false) String apiKey,

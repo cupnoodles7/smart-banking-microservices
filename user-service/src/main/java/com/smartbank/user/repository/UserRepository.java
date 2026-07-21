@@ -6,10 +6,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * Data access for {@link User} (PRD sec 6.12). {@code existsBy*} back the pre-insert
- * uniqueness checks; {@code findBy*} support lookups by natural key.
- */
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
 

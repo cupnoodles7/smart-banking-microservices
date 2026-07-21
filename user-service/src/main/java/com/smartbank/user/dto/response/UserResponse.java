@@ -2,10 +2,6 @@ package com.smartbank.user.dto.response;
 
 import java.time.Instant;
 
-/**
- * Customer profile as returned from every read/write endpoint. Controllers never
- * return the {@code User} entity directly (PRD sec 6.10).
- */
 public class UserResponse {
 
     private String id;
