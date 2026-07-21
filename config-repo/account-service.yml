@@ -8,13 +8,9 @@ spring:
 
 user-service:
   validation-enabled: true
-
-
 transaction-service:
   enabled: true
   url: http://transaction-service
-
-
 bank:
   savings:
     max-balance: 1000000
@@ -24,3 +20,5 @@ bank:
     max-balance: 1000000
     daily-transfer-limit: 500000
     daily-transaction-limit: 100
+  concurrency:
+    max-write-retries: 3
