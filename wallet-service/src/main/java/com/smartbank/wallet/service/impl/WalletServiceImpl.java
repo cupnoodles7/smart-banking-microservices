@@ -1,7 +1,7 @@
 package com.smartbank.wallet.service.impl;
 
-import com.smartbank.wallet.client.AccountClient;
-import com.smartbank.wallet.client.TransactionClient;
+import com.smartbank.wallet.client.AccountGateway;
+import com.smartbank.wallet.client.TransactionGateway;
 import com.smartbank.wallet.client.dto.AccountOperationRequest;
 import com.smartbank.wallet.client.dto.RecordTransactionRequest;
 import com.smartbank.wallet.constants.FailureReason;
@@ -53,8 +53,8 @@ public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final ProcessedRequestRepository processedRequestRepository;
-    private final AccountClient accountClient;
-    private final TransactionClient transactionClient;
+    private final AccountGateway accountClient;
+    private final TransactionGateway transactionClient;
     private final WalletMapper walletMapper;
 
     // Wallet money limits, pulled in from central config rather than hard-coded here.
@@ -64,8 +64,8 @@ public class WalletServiceImpl implements WalletService {
 
     public WalletServiceImpl(WalletRepository walletRepository,
                              ProcessedRequestRepository processedRequestRepository,
-                             AccountClient accountClient,
-                             TransactionClient transactionClient,
+                             AccountGateway accountClient,
+                             TransactionGateway transactionClient,
                              WalletMapper walletMapper,
                              @Value("${bank.wallet.max-balance}") BigDecimal walletMaxBalance,
                              @Value("${bank.wallet.daily-transfer-limit}") BigDecimal walletDailyTransferLimit,
