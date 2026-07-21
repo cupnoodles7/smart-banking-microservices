@@ -24,6 +24,10 @@ import com.smartbank.auth.entity.User;
 import com.smartbank.auth.service.AuthService;
 import com.smartbank.auth.util.JwtUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 //register/login/refresh are open at the Gateway
@@ -31,6 +35,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Authentication")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -44,6 +49,12 @@ public class AuthController {
 
     //Public endpoints (open at the Gateway)
     @PostMapping("/register")
+    @Operation(summary = "Register a new user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201"),
+            @ApiResponse(responseCode = "400"),
+            @ApiResponse(responseCode = "409")
+    })
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody AuthRequest request) {
         logger.info("Register request: {}", request.getUsername());
         User user = authService.registerUser(request);
@@ -58,12 +69,24 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Log in")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "400"),
+            @ApiResponse(responseCode = "401")
+    })
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         logger.info("Login request: {}", request.getUsernameOrEmail());
         return ResponseEntity.ok(authService.loginUser(request));
     }
 
     @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "400"),
+            @ApiResponse(responseCode = "401")
+    })
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         logger.info("Refresh token request");
         return ResponseEntity.ok(authService.refreshAccessToken(request.getRefreshToken()));
@@ -72,6 +95,11 @@ public class AuthController {
 
     //kept for manual testing and potential internal use.
     @PostMapping("/validate")
+    @Operation(summary = "Validate a token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "401")
+    })
     public ResponseEntity<Map<String, Object>> validateToken(
             @RequestHeader("Authorization") String authHeader) {
         Map<String, Object> response = new HashMap<>();
@@ -97,12 +125,22 @@ public class AuthController {
    
 //Private endpoints
     @GetMapping("/me")
+    @Operation(summary = "Get current user")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "404")
+    })
     public ResponseEntity<User> getCurrentUser(@RequestHeader("X-Auth-Username") String username) {
         logger.info("Profile request: {}", username);
         return ResponseEntity.ok(authService.getUserByUsername(username));
     }
 
     @GetMapping("/users")
+    @Operation(summary = "List all users")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200"),
+            @ApiResponse(responseCode = "403")
+    })
     public ResponseEntity<Iterable<User>> getAllUsers(
             @RequestHeader(value = "X-Auth-Roles", required = false) String rolesHeader) {
         if (rolesHeader == null || !rolesHeader.contains("ADMIN")) {
@@ -112,6 +150,10 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "Log out")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200")
+    })
     public ResponseEntity<Map<String, String>> logout() {
         // Stateless JWT: logout is client-side (discard the token)
         Map<String, String> response = new HashMap<>();

@@ -78,6 +78,26 @@ Or run a single service manually: `cd <service> && mvn spring-boot:run`
 - `*/internal` routes are service-to-service only (not exposed through the Gateway) and are
   guarded by the `X-Internal-Api-Key` header.
 
+## API documentation (Swagger / OpenAPI)
+
+Every business service exposes interactive Swagger UI. The Gateway aggregates all five into a
+single page — use the **dropdown (top-right)** to switch services:
+
+**Unified UI → http://localhost:8080/swagger-ui.html**
+
+Click **Authorize**, paste a JWT from `POST /auth/login`, and "Try it out" routes through the
+Gateway (which injects `X-Customer-Id` downstream), so authenticated calls work end-to-end.
+
+Per-service UIs (direct, bypassing the Gateway) are also available:
+
+| Service     | Swagger UI                             | OpenAPI JSON                       |
+|-------------|----------------------------------------|------------------------------------|
+| Auth        | http://localhost:8081/swagger-ui.html  | http://localhost:8081/v3/api-docs  |
+| User        | http://localhost:8082/swagger-ui.html  | http://localhost:8082/v3/api-docs  |
+| Account     | http://localhost:8083/swagger-ui.html  | http://localhost:8083/v3/api-docs  |
+| Wallet      | http://localhost:8084/swagger-ui.html  | http://localhost:8084/v3/api-docs  |
+| Transaction | http://localhost:8085/swagger-ui.html  | http://localhost:8085/v3/api-docs  |
+
 ## API endpoints
 
 Base paths are shown per service. Through the Gateway (`:8080`) the paths are identical

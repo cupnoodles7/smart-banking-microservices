@@ -31,7 +31,56 @@ spring:
           predicates:
             - Path=/transactions/**
 
-# JWT validation at the edge. `secret` must match the Auth Service signing key.
+
+        - id: auth-service-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/v3/api-docs/auth-service
+          filters:
+            - RewritePath=/v3/api-docs/auth-service, /v3/api-docs
+        - id: user-service-docs
+          uri: lb://user-service
+          predicates:
+            - Path=/v3/api-docs/user-service
+          filters:
+            - RewritePath=/v3/api-docs/user-service, /v3/api-docs
+        - id: account-service-docs
+          uri: lb://account-service
+          predicates:
+            - Path=/v3/api-docs/account-service
+          filters:
+            - RewritePath=/v3/api-docs/account-service, /v3/api-docs
+        - id: wallet-service-docs
+          uri: lb://wallet-service
+          predicates:
+            - Path=/v3/api-docs/wallet-service
+          filters:
+            - RewritePath=/v3/api-docs/wallet-service, /v3/api-docs
+        - id: transaction-service-docs
+          uri: lb://transaction-service
+          predicates:
+            - Path=/v3/api-docs/transaction-service
+          filters:
+            - RewritePath=/v3/api-docs/transaction-service, /v3/api-docs
+
+# Aggregated Swagger UI 
+# Served by the gateway at http://localhost:8080/swagger-ui.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /v3/api-docs/auth-service
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: account-service
+        url: /v3/api-docs/account-service
+      - name: wallet-service
+        url: /v3/api-docs/wallet-service
+      - name: transaction-service
+        url: /v3/api-docs/transaction-service
+
+# JWT validation
 security:
   jwt:
     secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
@@ -40,6 +89,11 @@ security:
       - /auth/login
       - /auth/refresh
       - /actuator/**
+      # Swagger UI + aggregated OpenAPI specs are public
+      - /swagger-ui.html
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /webjars/**
 
 eureka:
   client:
