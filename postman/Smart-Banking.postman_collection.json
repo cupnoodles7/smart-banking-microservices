@@ -12,6 +12,8 @@
     { "key": "accountUrl", "value": "http://localhost:8083" },
     { "key": "walletUrl", "value": "http://localhost:8084" },
     { "key": "txnUrl", "value": "http://localhost:8085" },
+    { "key": "configUrl", "value": "http://localhost:8888" },
+    { "key": "eurekaUrl", "value": "http://localhost:8761" },
     { "key": "username", "value": "alice" },
     { "key": "email", "value": "alice@example.com" },
     { "key": "phone", "value": "9990001111" },
@@ -571,6 +573,51 @@
             "header": [],
             "url": { "raw": "{{gatewayUrl}}/accounts/customer/{{customerId}}", "host": [ "{{gatewayUrl}}" ], "path": [ "accounts", "customer", "{{customerId}}" ] }
           }
+        }
+      ]
+    },
+    {
+      "name": "06 - Actuator (health / info / prometheus)",
+      "description": "Ops endpoints exposed by every service (platform + business). health and info are always available; prometheus requires config-server to be up at boot (the config-repo exposure adds it — the local fallback yml only exposes health,info). Health asserts 200 + status UP; prometheus asserts a metrics payload.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            { "name": "config-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{configUrl}}/actuator/health", "host": [ "{{configUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "eureka-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{eurekaUrl}}/actuator/health", "host": [ "{{eurekaUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "api-gateway", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/actuator/health", "host": [ "{{gatewayUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "auth-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{authUrl}}/actuator/health", "host": [ "{{authUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "user-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{userUrl}}/actuator/health", "host": [ "{{userUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "account-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{accountUrl}}/actuator/health", "host": [ "{{accountUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "wallet-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{walletUrl}}/actuator/health", "host": [ "{{walletUrl}}" ], "path": [ "actuator", "health" ] } } },
+            { "name": "transaction-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('status UP', () => pm.expect(pm.response.json().status).to.eql('UP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{txnUrl}}/actuator/health", "host": [ "{{txnUrl}}" ], "path": [ "actuator", "health" ] } } }
+          ]
+        },
+        {
+          "name": "Info",
+          "item": [
+            { "name": "config-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{configUrl}}/actuator/info", "host": [ "{{configUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "eureka-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{eurekaUrl}}/actuator/info", "host": [ "{{eurekaUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "api-gateway", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/actuator/info", "host": [ "{{gatewayUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "auth-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{authUrl}}/actuator/info", "host": [ "{{authUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "user-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{userUrl}}/actuator/info", "host": [ "{{userUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "account-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{accountUrl}}/actuator/info", "host": [ "{{accountUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "wallet-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{walletUrl}}/actuator/info", "host": [ "{{walletUrl}}" ], "path": [ "actuator", "info" ] } } },
+            { "name": "transaction-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{txnUrl}}/actuator/info", "host": [ "{{txnUrl}}" ], "path": [ "actuator", "info" ] } } }
+          ]
+        },
+        {
+          "name": "Prometheus",
+          "item": [
+            { "name": "config-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{configUrl}}/actuator/prometheus", "host": [ "{{configUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "eureka-server", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{eurekaUrl}}/actuator/prometheus", "host": [ "{{eurekaUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "api-gateway", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/actuator/prometheus", "host": [ "{{gatewayUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "auth-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{authUrl}}/actuator/prometheus", "host": [ "{{authUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "user-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{userUrl}}/actuator/prometheus", "host": [ "{{userUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "account-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{accountUrl}}/actuator/prometheus", "host": [ "{{accountUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "wallet-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{walletUrl}}/actuator/prometheus", "host": [ "{{walletUrl}}" ], "path": [ "actuator", "prometheus" ] } } },
+            { "name": "transaction-service", "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('200', () => pm.response.to.have.status(200));", "pm.test('exposes metrics', () => pm.expect(pm.response.text()).to.include('# HELP'));" ] } } ], "request": { "method": "GET", "header": [], "url": { "raw": "{{txnUrl}}/actuator/prometheus", "host": [ "{{txnUrl}}" ], "path": [ "actuator", "prometheus" ] } } }
+          ]
         }
       ]
     }

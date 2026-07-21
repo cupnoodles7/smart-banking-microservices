@@ -172,10 +172,35 @@ reads are paged, newest first. X-Internal-Api-Key : f2d26f3cac654b94db725f955aba
 | `status`          | `SUCCESS`, `FAILED` |
 | `failureReason`   | `NONE`, `INVALID_AMOUNT`, `INVALID_ACCOUNT`, `INVALID_WALLET`, `INSUFFICIENT_BALANCE`, `DAILY_LIMIT_EXCEEDED`, `WALLET_LIMIT_EXCEEDED`, `SELF_TRANSFER` |
 
+## Observability (Actuator)
+
+Every service (platform + business) exposes Spring Boot Actuator with `micrometer-registry-prometheus`.
+The exposed set is deliberately limited to three endpoints:
+
+| Endpoint | Path | Notes |
+|----------|------|-------|
+| Health | `/actuator/health` | `show-details: always`; returns `{"status":"UP", ...}` |
+| Info | `/actuator/info` | build/app info |
+| Prometheus | `/actuator/prometheus` | scrape target, tagged `application=<service-name>` |
+
+Examples (each service on its own port):
+```
+curl http://localhost:8081/actuator/health      # auth
+curl http://localhost:8084/actuator/prometheus   # wallet
+```
+Ports: config `8888`, eureka `8761`, gateway `8080`, auth `8081`, user `8082`, account `8083`,
+wallet `8084`, transaction `8085`.
+
+> **`prometheus` is gated on config-server.** The `health,info,prometheus` exposure lives in
+> `config-repo/<service>.yml`; each service's local fallback `application.yml` exposes only
+> `health,info`. So if a business service boots while config-server is down, `/actuator/prometheus`
+> won't be present until config-server is reachable.
+
 ## Postman
 
 `postman/Smart-Banking.postman_collection.json` covers every endpoint above plus the Gateway
-end-to-end flow. Import it and use **Run collection** (Collection Runner) to execute the folders
-top-to-bottom — Register/Login capture the token and IDs into collection variables that later
-requests reuse, so run it in order (or with **No Environment** selected) rather than sending the
-dependent requests individually.
+end-to-end flow and an **Actuator** folder (health / info / prometheus for all 8 services). Import
+it and use **Run collection** (Collection Runner) to execute the folders top-to-bottom —
+Register/Login capture the token and IDs into collection variables that later requests reuse, so
+run it in order (or with **No Environment** selected) rather than sending the dependent requests
+individually. The Actuator folder is independent and can be run on its own.
