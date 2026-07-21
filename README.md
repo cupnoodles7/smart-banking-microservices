@@ -60,11 +60,20 @@ Or run a single service manually: `cd <service> && mvn spring-boot:run`
 - The **Config Server** serves the YAML in `config-repo/` to the business services. Point it
   at a Git repo via `CONFIG_REPO_URI`, or run it in the `native` profile to serve the folder
   straight off disk (what `run-all.sh` does).
-- `config-repo/application.yml` — shared settings (Eureka URL, the JWT secret shared between
+- `config-repo/application.yml` — shared settings (Eureka URL, the JWT config shared between
   Auth and Gateway, token lifetimes, actuator).
 - `config-repo/<service>.yml` — each service's port and MongoDB URI.
 - Business services import config via `spring.config.import=optional:configserver:...` and keep
   local fallbacks in their own `application.yml` for offline dev.
+
+### Secrets
+
+- `JWT_SECRET` — shared HMAC signing key for JWTs (identical on Auth + Gateway, ≥ 256 bits).
+- `USER_INTERNAL_API_KEY` — shared key guarding user-service's `/users/internal` endpoints.
+
+For local dev, `run-all.sh` loads a git-ignored `.env` if present, otherwise generates
+ephemeral secrets for the run. Create a `.env` at the repo root to pin stable values:
+
 
 ## Authentication & identity
 
@@ -72,7 +81,7 @@ Or run a single service manually: `cd <service> && mvn spring-boot:run`
   Every other route through the Gateway requires a valid `Authorization: Bearer <token>` JWT.
 - The Gateway validates the JWT and injects identity headers downstream —
   `X-Customer-Id`, `X-Auth-Username`, `X-Auth-Roles`. Its signing secret must match the Auth
-  Service's (shared via `config-repo/application.yml` / the `JWT_SECRET` env var).
+  Service's — both read the `JWT_SECRET` env var (see **Secrets** above).
 - **Calling a service directly** (bypassing the Gateway, e.g. on its own port) means you must
   send those identity headers yourself — the tables below note which header each route needs.
 - `*/internal` routes are service-to-service only (not exposed through the Gateway) and are
@@ -121,7 +130,7 @@ Base paths are shown per service. Through the Gateway (`:8080`) the paths are id
 |--------|-------------------------|-----------------------------------------|--------------|
 | GET    | `/users/{id}`           | `X-Customer-Id` (must equal `{id}`)     | own profile only |
 | PUT    | `/users/{id}`           | `X-Customer-Id` (must equal `{id}`)     | `{fullName, email, phoneNumber, address}` |
-| POST   | `/users/internal`       | `X-Internal-Api-Key`,'change-me-internal-user-service-key'                    | `{id, fullName, email, phoneNumber, address}` → **201**. `email` and `phoneNumber` are unique. Service-to-service. |
+| POST   | `/users/internal`       | `X-Internal-Api-Key` (value = `USER_INTERNAL_API_KEY`) | `{id, fullName, email, phoneNumber, address}` → **201**. `email` and `phoneNumber` are unique. Service-to-service. |
 | DELETE | `/users/internal/{id}`  | `X-Internal-Api-Key`                    | → **204**, idempotent. Compensating delete. Service-to-service. |
 
 ### Account Service — `:8083`  (all routes need `X-Customer-Id`)
@@ -150,7 +159,7 @@ Money-moving routes return **HTTP 200** with a `TransactionResult` whose `status
 ### Transaction Service — `:8085`
 
 Immutable ledger. `POST /internal` is service-to-service (idempotent on `idempotencyKey`);
-reads are paged, newest first. X-Internal-Api-Key : f2d26f3cac654b94db725f955aba7a465bbd3fedd46996ae1e48be69b6893bfb
+reads are paged, newest first.
 
 | Method | Path                                   | Body / notes |
 |--------|----------------------------------------|--------------|

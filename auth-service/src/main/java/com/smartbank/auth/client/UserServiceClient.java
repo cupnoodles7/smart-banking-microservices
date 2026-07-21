@@ -28,7 +28,7 @@ public class UserServiceClient {
     public UserServiceClient(
             RestTemplate restTemplate,
             @Value("${user-service.base-url:http://user-service}") String baseUrl,
-            @Value("${user-service.internal-api-key:${security.internal.api-key:change-me-internal-user-service-key}}") String internalApiKey) {
+            @Value("${user-service.internal-api-key:${security.internal.api-key:${USER_INTERNAL_API_KEY}}}") String internalApiKey) {
         this.restTemplate = restTemplate;
         this.baseUrl = baseUrl;
         this.internalApiKey = internalApiKey;

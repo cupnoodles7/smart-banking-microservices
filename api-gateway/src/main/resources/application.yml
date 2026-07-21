@@ -83,7 +83,9 @@ springdoc:
 # JWT validation
 security:
   jwt:
-    secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
+    # Required — no default. Must match the Auth Service's JWT_SECRET (>= 256 bits).
+    # Unset => the gateway fails to start (see run-all.sh / .env.example).
+    secret: ${JWT_SECRET}
     open-paths:
       - /auth/register
       - /auth/login

@@ -9,8 +9,9 @@ eureka:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
-    access-token-expiry-ms: 900000       
+    # If JWT_SECRET is unset the app fails to start
+    secret: ${JWT_SECRET}
+    access-token-expiry-ms: 900000
     refresh-token-expiry-ms: 604800000   
 
 management:

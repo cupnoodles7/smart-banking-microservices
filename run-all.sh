@@ -59,14 +59,30 @@ wait_ready() {
 
 # ---- preflight -------------------------------------------------------------
 
-command -v mvn  >/dev/null || { echo "Maven not found on PATH"; exit 1; }
-command -v curl >/dev/null || { echo "curl not found on PATH"; exit 1; }
+command -v mvn     >/dev/null || { echo "Maven not found on PATH"; exit 1; }
+command -v curl    >/dev/null || { echo "curl not found on PATH"; exit 1; }
+command -v openssl >/dev/null || { echo "openssl not found on PATH (needed to generate dev secrets)"; exit 1; }
 if ! nc -z -G2 -w2 localhost 27017 2>/dev/null; then
   echo "⚠  MongoDB does not appear to be running on localhost:27017."
   echo "   Auth/User/Account/Wallet/Transaction need it. Start it, e.g.:"
   echo "     brew services start mongodb-community    # or: docker run -d -p 27017:27017 mongo"
   read -r -p "   Continue anyway? [y/N] " ans; [ "$ans" = "y" ] || exit 1
 fi
+
+# ---- secrets ---------------------------------------------------------------
+# The app configs have NO committed secret defaults — an unset JWT_SECRET /
+# USER_INTERNAL_API_KEY makes a service fail to start (fail-fast). For local dev
+# we load a git-ignored .env if present, otherwise generate ephemeral secrets
+# for this run so nothing usable is ever committed. All services below are
+# children of this script and inherit the exported values.
+if [ -f "$ROOT/.env" ]; then
+  echo "🔑 loading secrets from .env"
+  set -a; . "$ROOT/.env"; set +a
+fi
+: "${JWT_SECRET:=$(openssl rand -hex 32)}"              # 64 hex chars = 512 bits, > 256-bit minimum
+: "${USER_INTERNAL_API_KEY:=$(openssl rand -hex 24)}"
+export JWT_SECRET USER_INTERNAL_API_KEY
+echo "🔑 JWT_SECRET and USER_INTERNAL_API_KEY set for this run (create .env to pin stable values)"
 
 echo "== Smart Banking — starting all services =="
 

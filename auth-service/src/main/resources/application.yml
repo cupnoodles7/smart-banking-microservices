@@ -24,7 +24,8 @@ management:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:change-me-super-secret-jwt-signing-key-min-256-bits-long-0123456789}
+   
+    secret: ${JWT_SECRET}
     access-token-expiry-ms: ${JWT_ACCESS_EXPIRY_MS:900000}      # 15 minutes (PRD sec 6.8)
     refresh-token-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000} # 7 days     (PRD sec 6.8)
 
