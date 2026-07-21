@@ -1,4 +1,4 @@
-# Smart Banking & Wallet System — Track B (Microservices MVP)
+# Smart Banking & Wallet System — Microservices MVP
 
 The microservices track of the Smart Banking & Wallet System
 (see `Smart_Banking_System_Final_PRD.docx`).
@@ -43,17 +43,6 @@ bank-microservice/
 ## Running it
 
 **Prerequisites:** JDK 21, Maven, and MongoDB on `localhost:27017`.
-
-> **Use JDK 21.** `account-service` and `transaction-service` fail to compile on JDK 23+
-> (their Lombok annotation processor isn't auto-discovered on newer JDKs). Point the build
-> at a JDK 21 first:
-> ```
-> # if installed via Homebrew (brew install openjdk@21):
-> export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
-> # or, if registered with the system: export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-> export PATH="$JAVA_HOME/bin:$PATH"
-> java -version    # should print 21.x
-> ```
 
 Start and stop the whole stack (config → eureka → business services + gateway, each gated on
 a health check):

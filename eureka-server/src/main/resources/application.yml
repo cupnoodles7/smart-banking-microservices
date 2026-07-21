@@ -7,7 +7,7 @@ spring:
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: eureka
   client:
     # A standalone registry does not register with, or fetch from, itself.
     register-with-eureka: false

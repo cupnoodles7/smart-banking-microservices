@@ -27,6 +27,7 @@ out/
 .factorypath
 .apt_generated/
 .springBeans
+.metadata/
 # VS Code
 .vscode/
 # NetBeans
