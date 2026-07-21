@@ -7,14 +7,11 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-
+import org.springframework.data.annotation.Version;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-// One Savings or Current account (PRD sec 6.5.1). Balance is stored directly, not
-// derived from transaction history. Daily counters are reset lazily on first use
-// of a new day (PRD sec 6.9), never via a scheduled job.
 @Document(collection = "accounts")
 @Data
 @Builder
@@ -23,31 +20,33 @@ import java.time.LocalDateTime;
 public class Account {
 
     @Id
-    private String id; // Mongo document id
+    private String id;
 
     @Indexed
-    private String customerId; // owner of the account; drives GET /accounts/customer/{id}
+    private String customerId;
 
-    private AccountType accountType; // SAVINGS or CURRENT
-
-    @Builder.Default
-    private BigDecimal balance = BigDecimal.ZERO; // stored directly, never calculated
-
-    private BigDecimal maxBalance;          // account-type limit at creation time (PRD sec 6.5.1)
-    private BigDecimal dailyTransferLimit;  // account-type limit at creation time
-    private int dailyTransactionLimit;      // account-type limit at creation time
+    private AccountType accountType; 
 
     @Builder.Default
-    private BigDecimal dailyTransferredAmount = BigDecimal.ZERO; // reset lazily, see util.DailyLimitResetEvaluator
+    private BigDecimal balance = BigDecimal.ZERO;
+
+    private BigDecimal maxBalance;          
+    private BigDecimal dailyTransferLimit; 
+    private int dailyTransactionLimit;      
 
     @Builder.Default
-    private int todayTransactionCount = 0; // reset lazily
-
-    private LocalDate lastLimitResetDate; // last day the counters above were valid for
+    private BigDecimal dailyTransferredAmount = BigDecimal.ZERO; 
 
     @Builder.Default
-    private String currency = "INR"; // PRD sec 6.5 default currency
+    private int todayTransactionCount = 0; 
+
+    private LocalDate lastLimitResetDate;
+
+    @Builder.Default
+    private String currency = "INR"; 
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Version
+    private Long version;
 }
