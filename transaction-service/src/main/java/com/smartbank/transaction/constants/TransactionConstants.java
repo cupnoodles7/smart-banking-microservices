@@ -14,4 +14,8 @@ public final class TransactionConstants {
     public static final String SORT_FIELD = "initiatedAt"; // list endpoints sort by this, descending
 
     public static final int MAX_LOOKUP_SIZE = 500; // cap when fetching a customer's accounts/wallets
+
+    // Name of the header trusted services send on POST /transactions/internal (the secret
+    // VALUE lives in config under security.internal.api-key, not here).
+    public static final String INTERNAL_API_KEY_HEADER = "X-Internal-Api-Key";
 }

@@ -7,8 +7,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Optional;
 
-// Data access for the immutable ledger (PRD sec 6.12). Read + append only.
-// Ordering (initiatedAt DESC) is supplied by the caller via the Pageable's Sort.
+
 public interface TransactionRepository extends MongoRepository<Transaction, String> {
 
     // Idempotency check: has this key already been recorded? (PRD sec 6.15)

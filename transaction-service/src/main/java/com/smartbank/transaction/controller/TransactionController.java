@@ -3,6 +3,7 @@ package com.smartbank.transaction.controller;
 import com.smartbank.transaction.constants.TransactionConstants;
 import com.smartbank.transaction.dto.request.RecordTransactionRequest;
 import com.smartbank.transaction.dto.response.TransactionResponse;
+import com.smartbank.transaction.security.InternalApiKeyGuard;
 import com.smartbank.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,22 +38,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final InternalApiKeyGuard internalApiKeyGuard;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService,
+                                InternalApiKeyGuard internalApiKeyGuard) {
         this.transactionService = transactionService;
+        this.internalApiKeyGuard = internalApiKeyGuard;
     }
 
     @PostMapping("/internal")
     @Operation(summary = "Record a completed transaction",
-            description = "Stores an already-decided SUCCESS or FAILED outcome from another "
-                    + "microservice. Idempotent on idempotencyKey: a repeated key returns the "
-                    + "previously stored transaction instead of creating a duplicate.")
+            description = "Stores an already-decided SUCCESS or FAILED outcome. Requires the "
+                    + "X-Internal-Api-Key header. Idempotent on idempotencyKey.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Transaction recorded (or existing one returned)"),
             @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "401", description = "Missing or invalid internal API key"),
             @ApiResponse(responseCode = "409", description = "Conflicting duplicate write")
     })
-    public ResponseEntity<TransactionResponse> record(@Valid @RequestBody RecordTransactionRequest request) {
+    public ResponseEntity<TransactionResponse> record(
+            @RequestHeader(name = TransactionConstants.INTERNAL_API_KEY_HEADER, required = false) String internalApiKey,
+            @Valid @RequestBody RecordTransactionRequest request) {
+        internalApiKeyGuard.verify(internalApiKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.record(request));
     }
 

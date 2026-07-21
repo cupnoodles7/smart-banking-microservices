@@ -6,6 +6,11 @@ spring:
     mongodb:
       uri: ${TRANSACTION_DB_URI:mongodb://localhost:27017/transaction_db}
 
+# Shared secret trusted services send in X-Internal-Api-Key to write to the ledger.
+security:
+  internal:
+    api-key: ${INTERNAL_API_KEY:f2d26f3cac654b94db725f955aba7a465bbd3fedd46996ae1e48be69b6893bfb}
+
 # Distributed tracing exported to Zipkin (PRD sec 6.x - observability).
 management:
   tracing:
