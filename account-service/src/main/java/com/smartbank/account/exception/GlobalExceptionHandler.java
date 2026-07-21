@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -81,10 +83,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, request);
     }
 
-    /**
-     * Handles malformed JSON and invalid enum values
-     * (e.g. accountType = "ABC").
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex,
@@ -118,10 +116,20 @@ public class GlobalExceptionHandler {
         );
     }
 
-    /**
-     * Handles requests for resources/endpoints that do not exist
-     * (for example /actuator/prometheus when Prometheus is not configured).
-     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            OptimisticLockingFailureException ex,
+            HttpServletRequest request) {
+
+        log.warn("Concurrent update detected while serving {}",
+                request.getRequestURI());
+
+        return build(
+                HttpStatus.CONFLICT,
+                "Another transaction modified this account. Please retry.",
+                request
+        );
+    }
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(
             NoResourceFoundException ex,
@@ -135,10 +143,6 @@ public class GlobalExceptionHandler {
                 request
         );
     }
-
-    /**
-     * Catch-all for unexpected exceptions.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(
             Exception ex,
