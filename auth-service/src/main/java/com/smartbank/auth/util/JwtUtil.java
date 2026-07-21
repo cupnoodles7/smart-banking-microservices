@@ -19,16 +19,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
-/**
- * Signs and reads JWTs (jjwt 0.12 API).
- *
- * <p>The signing secret and lifetimes come from {@code security.jwt.*} — the same
- * secret the API Gateway uses to verify tokens locally, so tokens issued here are
- * accepted there without any call back to this service.
- *
- * <p>Access tokens carry {@code customerId}, {@code email} and {@code roles} claims
- * (subject = username); the Gateway forwards these downstream as trusted headers.
- */
 @Component
 public class JwtUtil {
 
@@ -45,7 +35,7 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    // ---- Extraction ----
+    // Extraction
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -70,7 +60,7 @@ public class JwtUtil {
     @SuppressWarnings("unchecked")
     public Set<String> extractRoles(String token) {
         Object roles = extractAllClaims(token).get("roles");
-        // jjwt + Jackson deserializes the JSON array into an ArrayList, not a Set.
+        // jjwt + Jackson deserializes the JSON array into an ArrayList, not a Set
         if (roles instanceof Collection) {
             return new HashSet<>((Collection<String>) roles);
         }
@@ -93,7 +83,7 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    // ---- Generation ----
+    //Geberation
 
     public String generateAccessToken(String username, String customerId, String email, Set<String> roles) {
         Map<String, Object> claims = new HashMap<>();
@@ -122,9 +112,9 @@ public class JwtUtil {
                 .compact();
     }
 
-    // ---- Validation ----
+    //Validation
 
-    /** Signature + expiry check only. */
+    //Signature + expiry check only
     public boolean validateToken(String token) {
         try {
             extractAllClaims(token);

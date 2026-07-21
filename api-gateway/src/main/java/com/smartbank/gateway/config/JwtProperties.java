@@ -1,23 +1,18 @@
 package com.smartbank.gateway.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * JWT-related configuration bound from the {@code security.jwt.*} namespace.
- *
- * <p>The {@code secret} MUST match the secret the Auth Service signs tokens with,
- * so it is a natural candidate for centralized (shared) configuration.
- */
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+
 @ConfigurationProperties(prefix = "security.jwt")
 public class JwtProperties {
 
-    /** HMAC signing secret (shared with the Auth Service). Must be >= 256 bits. */
+    // The secret key used to sign and verify JWT tokens
     private String secret;
 
-    /** Request paths that bypass JWT validation entirely (Ant-style patterns). */
+    // Request paths that bypass JWT validation entirely
     private List<String> openPaths = new ArrayList<>();
 
     public String getSecret() {

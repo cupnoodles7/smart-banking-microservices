@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,17 @@ public class UserController {
         requireValidInternalKey(apiKey);
         UserResponse created = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    // Internal compensating delete: Auth calls this to remove an orphan profile if its
+    // credential write fails after create. Idempotent (204 whether or not it existed).
+    @DeleteMapping("/internal/{id}")
+    public ResponseEntity<Void> deleteInternal(
+            @RequestHeader(value = UserServiceConstants.HEADER_INTERNAL_API_KEY, required = false) String apiKey,
+            @PathVariable String id) {
+        requireValidInternalKey(apiKey);
+        userService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     private void requireValidInternalKey(String apiKey) {

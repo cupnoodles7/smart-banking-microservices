@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.smartbank.auth.dto.request.AuthRequest;
 import com.smartbank.auth.dto.request.LoginRequest;
@@ -105,7 +106,7 @@ public class AuthController {
     public ResponseEntity<Iterable<User>> getAllUsers(
             @RequestHeader(value = "X-Auth-Roles", required = false) String rolesHeader) {
         if (rolesHeader == null || !rolesHeader.contains("ADMIN")) {
-            throw new RuntimeException("Access denied. Admin role required.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied. Admin role required.");
         }
         return ResponseEntity.ok(authService.getAllUsers());
     }
