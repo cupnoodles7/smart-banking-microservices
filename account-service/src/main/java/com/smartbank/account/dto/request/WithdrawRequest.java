@@ -6,7 +6,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-// Body for POST /accounts/withdraw (PRD sec 6.10).
 @Data
 public class WithdrawRequest {
 

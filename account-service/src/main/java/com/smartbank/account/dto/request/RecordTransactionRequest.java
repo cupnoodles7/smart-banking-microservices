@@ -11,9 +11,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-// Outbound body for Transaction Service's POST /transactions/internal (PRD sec 6.7).
-// Field-for-field mirror of Transaction Service's own RecordTransactionRequest, kept
-// as a local copy since Account Service must never depend on another service's code.
 @Data
 @Builder
 public class RecordTransactionRequest {

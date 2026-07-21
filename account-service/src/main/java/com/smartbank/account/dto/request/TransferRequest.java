@@ -6,8 +6,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-// Body for POST /accounts/transfer (PRD sec 6.10). Account-to-account transfer only;
-// wallet-involving transfers are Wallet Service's responsibility (PRD sec 6.4).
 @Data
 public class TransferRequest {
 
