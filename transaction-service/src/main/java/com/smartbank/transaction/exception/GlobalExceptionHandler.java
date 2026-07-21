@@ -13,17 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-/**
- * Translates exceptions into the standard error shape (PRD sec 6.14):
- * <pre>{ "timestamp", "status", "error", "message", "path" }</pre>
- *
- * <ul>
- *   <li>400 - invalid request data (bean validation, amount, self-transfer, malformed request)</li>
- *   <li>404 - transaction not found</li>
- *   <li>409 - genuine duplicate / conflicting write</li>
- *   <li>500 - MongoDB or otherwise unexpected failure</li>
- * </ul>
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -47,6 +36,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateTransactionException ex,
                                                          HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnauthorizedInternalAccessException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedInternalAccessException ex,
+                                                            HttpServletRequest request) {
+        log.warn("Unauthorized internal access to {}: {}", request.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
     // Bean-validation failures on @Valid request bodies.

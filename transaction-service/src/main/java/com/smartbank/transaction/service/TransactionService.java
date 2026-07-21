@@ -5,13 +5,6 @@ import com.smartbank.transaction.dto.response.TransactionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-/**
- * Business API of the immutable transaction ledger (PRD sec 6.7).
- *
- * <p>The service only records final outcomes (SUCCESS/FAILED) decided by other
- * services and reads them back. It never updates or deletes a record, never
- * touches Account/Wallet data, and never calls another service.
- */
 public interface TransactionService {
 
     // Record an already-decided SUCCESS/FAILED outcome; idempotent on idempotencyKey.

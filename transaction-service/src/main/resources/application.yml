@@ -2,15 +2,16 @@ spring:
   application:
     name: transaction-service
   config:
-    # Authoritative config (port, MongoDB URI, JWT secret, Eureka) is served by the
-    # Config Server from config-repo/transaction-service.yml and overrides the local fallbacks below.
-    # 'optional:' lets the service still boot for local development if the Config
-    # Server is down (it then falls back to the values in this file).
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 
-# ---- Local fallbacks (used only when the Config Server is unreachable) ----
+
 server:
   port: 8085
+
+
+security:
+  internal:
+    api-key: ${INTERNAL_API_KEY:f2d26f3cac654b94db725f955aba7a465bbd3fedd46996ae1e48be69b6893bfb}
 
 eureka:
   client:
