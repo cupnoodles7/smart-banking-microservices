@@ -5,3 +5,22 @@ spring:
   data:
     mongodb:
       uri: ${ACCOUNT_DB_URI:mongodb://localhost:27017/account_db}
+
+user-service:
+  validation-enabled: true
+
+
+transaction-service:
+  enabled: true
+  url: http://transaction-service
+
+
+bank:
+  savings:
+    max-balance: 1000000
+    daily-transfer-limit: 100000
+    daily-transaction-limit: 20
+  current:
+    max-balance: 1000000
+    daily-transfer-limit: 500000
+    daily-transaction-limit: 100

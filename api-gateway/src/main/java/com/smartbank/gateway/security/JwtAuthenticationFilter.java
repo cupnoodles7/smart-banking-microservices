@@ -1,8 +1,9 @@
 package com.smartbank.gateway.security;
 
-import com.smartbank.gateway.config.JwtProperties;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -16,19 +17,14 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.server.ServerWebExchange;
+
+import com.smartbank.gateway.config.JwtProperties;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
-
-/**
- * Global gateway filter that enforces JWT presence and validity on every route
- * except the configured open paths (PRD sec 6.8).
- *
- * <p>On success it forwards identity claims to the downstream service as trusted
- * headers ({@code X-Customer-Id}, {@code X-User-Email}) so services need not
- * re-parse the token. On failure it short-circuits with HTTP 401 in the standard
- * error shape (PRD sec 6.9).
- */
+//Global gateway filter that enforces JWT presence and validity on every route except the configured open paths 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
@@ -62,8 +58,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         try {
             Claims claims = jwtService.parse(token);
             ServerHttpRequest mutated = request.mutate()
+                    // Identity forwarded to downstream services as trusted headers
+                    // subject = username; customerId/email/roles are explicit claims
+                    .header("X-Auth-Username", String.valueOf(claims.getSubject()))
                     .header("X-Customer-Id", String.valueOf(claims.get("customerId")))
-                    .header("X-User-Email", claims.getSubject())
+                    .header("X-User-Email", String.valueOf(claims.get("email")))
+                    .header("X-Auth-Roles", rolesHeader(claims))
                     .build();
             return chain.filter(exchange.mutate().request(mutated).build());
         } catch (JwtException | IllegalArgumentException ex) {
@@ -74,6 +74,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isOpen(String path) {
         return properties.getOpenPaths().stream().anyMatch(p -> pathMatcher.match(p, path));
+    }
+
+   
+    private String rolesHeader(Claims claims) {
+        Object roles = claims.get("roles");
+        if (roles instanceof Collection<?> c) {
+            return c.stream().map(String::valueOf).collect(Collectors.joining(","));
+        }
+        return "";
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String path, String message) {
@@ -91,7 +100,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        // Run before routing so unauthenticated requests never reach downstream services.
+        // this runs before routing so unauthenticated requests never reach downstream services
         return -1;
     }
 }

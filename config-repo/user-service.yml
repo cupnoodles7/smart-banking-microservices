@@ -5,3 +5,13 @@ spring:
   data:
     mongodb:
       uri: ${USER_DB_URI:mongodb://localhost:27017/user_db}
+      auto-index-creation: true
+
+# Internal (service-to-service) auth for POST /users/internal, called by the Auth
+security:
+  internal:
+    api-key: ${USER_INTERNAL_API_KEY:change-me-internal-user-service-key}
+
+logging:
+  level:
+    com.smartbank.user: INFO

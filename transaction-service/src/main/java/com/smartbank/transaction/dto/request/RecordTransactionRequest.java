@@ -12,8 +12,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-// Body for POST /transactions/internal - an already-decided outcome to record (PRD sec 6.7).
-// Annotations catch shape errors early; the deeper business rules live in the service layer.
+// Body for POST /transactions/internal
 @Data
 public class RecordTransactionRequest {
 
@@ -43,7 +42,7 @@ public class RecordTransactionRequest {
     private FailureReason failureReason; // defaults to NONE if the caller omits it
 
     @NotBlank
-    private String idempotencyKey; // required; makes retries safe and de-duplicated (PRD sec 6.15)
+    private String idempotencyKey; // required; makes retries safe and de-duplicated 
 
     private LocalDateTime initiatedAt; // optional; defaults to now if omitted
     private LocalDateTime completedAt; // optional; defaults to now if omitted

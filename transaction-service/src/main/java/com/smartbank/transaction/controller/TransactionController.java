@@ -25,13 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST surface for the immutable transaction ledger (PRD sec 6.7).
- *
- * <p>Only records final outcomes and reads them back - there are deliberately no
- * update or delete endpoints. List endpoints are paginated and always sorted by
- * {@code initiatedAt} descending (newest first).
- */
+
 @RestController
 @RequestMapping("/transactions")
 @Tag(name = "Transactions", description = "Immutable ledger of SUCCESS/FAILED transactions")
