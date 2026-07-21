@@ -1,12 +1,6 @@
 package com.smartbank.wallet.constants;
 
-/**
- * Why a transaction ended up FAILED (PRD §6.5). {@code NONE} is used for SUCCESS.
- *
- * <p>Per PRD §7.3, business-rule failures never throw across the REST boundary —
- * they are returned as HTTP 200 with a FAILED transaction carrying one of these
- * reasons.
- */
+// The reason a wallet transaction failed. NONE just means it went through fine.
 public enum FailureReason {
     NONE,
     INVALID_AMOUNT,

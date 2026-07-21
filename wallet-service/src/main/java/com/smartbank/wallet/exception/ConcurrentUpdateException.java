@@ -1,9 +1,6 @@
 package com.smartbank.wallet.exception;
 
-/**
- * Optimistic-lock retries were exhausted on a balance-mutating write (PRD §6.15).
- * Structural problem → HTTP 409 Conflict (PRD §10 scenario 8).
- */
+// We kept losing the race to update a wallet and gave up after retrying. Comes back as a 409 Conflict.
 public class ConcurrentUpdateException extends RuntimeException {
     public ConcurrentUpdateException(String message) {
         super(message);

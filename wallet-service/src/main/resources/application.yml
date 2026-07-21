@@ -2,7 +2,7 @@ spring:
   application:
     name: wallet-service
   config:
-    # Authoritative config (port, MongoDB URI, JWT secret, Eureka) is served by the
+    # Authoritative config (port, MongoDB URI, business limits, Eureka) is served by the
     # Config Server from config-repo/wallet-service.yml and overrides the local fallbacks below.
     # 'optional:' lets the service still boot for local development if the Config
     # Server is down (it then falls back to the values in this file).
@@ -24,3 +24,11 @@ management:
     web:
       exposure:
         include: health,info
+
+# Business limits (PRD sec 6.6), read via @Value in WalletServiceImpl.
+# Also duplicated in config-repo/wallet-service.yml as the authoritative source.
+bank:
+  wallet:
+    max-balance: 50000
+    daily-transfer-limit: 20000
+    daily-transaction-limit: 20

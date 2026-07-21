@@ -6,25 +6,15 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-/**
- * Talks to the Account Service over the documented REST contract (PRD §6.7).
- * Used by top-up: debit the linked account ({@link #withdraw}), and on partial
- * failure credit it back ({@link #deposit}) — the compensating reversal of §6.16.
- *
- * <p>Load-balanced by service id via Eureka. The caller's JWT + identity headers are
- * forwarded by {@link com.smartbank.wallet.config.FeignClientConfig}.
- *
- * <p>NOTE: the Account Service is not implemented yet; this client targets its PRD
- * contract so top-up works end-to-end once that service exists.
- */
+// Talks to the Account Service: pulls money out of the linked bank account on top-up, and puts it back if the top-up can't be finished.
 @FeignClient(name = "account-service", path = "/accounts")
 public interface AccountClient {
 
-    /** Debit the linked account (source of a top-up). */
+    // Take money out of the linked account (where a top-up comes from).
     @PostMapping("/withdraw")
     AccountOperationResponse withdraw(@RequestBody AccountOperationRequest request);
 
-    /** Credit the linked account (compensating reversal of a failed top-up). */
+    // Put money back into the linked account when a top-up couldn't be finished.
     @PostMapping("/deposit")
     AccountOperationResponse deposit(@RequestBody AccountOperationRequest request);
 }

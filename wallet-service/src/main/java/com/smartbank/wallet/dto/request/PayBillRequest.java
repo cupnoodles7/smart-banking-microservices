@@ -6,10 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-/**
- * Pay a bill from a wallet (PRD §6.7 POST /wallets/pay-bill).
- * The receiver is a MERCHANT ({@code billerId}); there is no wallet to credit.
- */
+// What the caller sends to pay a bill from a wallet. The money goes to a merchant, so there's no wallet to credit.
 @Data
 public class PayBillRequest {
 

@@ -9,9 +9,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Wallet view returned to clients. Entities are never returned directly (PRD §6.10).
- */
+// The wallet details we show to clients - we never hand back the raw database entity.
 @Data
 @Builder
 @NoArgsConstructor

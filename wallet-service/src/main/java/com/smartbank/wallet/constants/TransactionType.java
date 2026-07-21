@@ -1,9 +1,6 @@
 package com.smartbank.wallet.constants;
 
-/**
- * Transaction ledger types (PRD §6.5). The wallet service only ever writes the
- * wallet-related types, but the full enum mirrors the Transaction Service contract.
- */
+// The kinds of transactions the ledger tracks; the wallet only ever creates the wallet-related ones.
 public enum TransactionType {
     DEPOSIT,
     WITHDRAW,

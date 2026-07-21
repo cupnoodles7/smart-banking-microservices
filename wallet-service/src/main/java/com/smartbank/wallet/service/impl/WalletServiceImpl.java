@@ -3,7 +3,6 @@ package com.smartbank.wallet.service.impl;
 import com.smartbank.wallet.client.AccountClient;
 import com.smartbank.wallet.client.TransactionClient;
 import com.smartbank.wallet.client.dto.AccountOperationRequest;
-import com.smartbank.wallet.client.dto.AccountOperationResponse;
 import com.smartbank.wallet.client.dto.RecordTransactionRequest;
 import com.smartbank.wallet.constants.FailureReason;
 import com.smartbank.wallet.constants.PartyType;
@@ -21,12 +20,15 @@ import com.smartbank.wallet.entity.Wallet;
 import com.smartbank.wallet.exception.BusinessRuleException;
 import com.smartbank.wallet.exception.ConcurrentUpdateException;
 import com.smartbank.wallet.exception.DuplicateWalletException;
+import com.smartbank.wallet.exception.WalletAccessDeniedException;
 import com.smartbank.wallet.exception.WalletNotFoundException;
 import com.smartbank.wallet.mapper.WalletMapper;
 import com.smartbank.wallet.repository.ProcessedRequestRepository;
 import com.smartbank.wallet.repository.WalletRepository;
 import com.smartbank.wallet.service.WalletService;
+import feign.FeignException;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -41,15 +43,8 @@ import java.time.ZoneId;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/**
- * Wallet business logic (PRD §6). Implements lazy counter reset (§6.14), optimistic
- * locking with bounded retry (§6.15), idempotency (§6.15) and synchronous
- * compensating reversals for partial multi-owner failures (§6.16).
- *
- * <p>Convention (PRD §7.3): business-rule violations are returned as HTTP 200 with a
- * FAILED {@link TransactionResult}; only structural problems (missing wallet, lock
- * conflict exhausted) throw and become §6.9 error responses.
- */
+// The real wallet logic: creating wallets, moving money with retries and idempotency, and
+// undoing half-finished transfers. Business-rule failures come back as a 200 FAILED, not an error.
 @Service
 public class WalletServiceImpl implements WalletService {
 
@@ -62,16 +57,27 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionClient transactionClient;
     private final WalletMapper walletMapper;
 
+    // Wallet money limits, pulled in from central config rather than hard-coded here.
+    private final BigDecimal walletMaxBalance;
+    private final BigDecimal walletDailyTransferLimit;
+    private final int walletDailyTransactionLimit;
+
     public WalletServiceImpl(WalletRepository walletRepository,
                              ProcessedRequestRepository processedRequestRepository,
                              AccountClient accountClient,
                              TransactionClient transactionClient,
-                             WalletMapper walletMapper) {
+                             WalletMapper walletMapper,
+                             @Value("${bank.wallet.max-balance}") BigDecimal walletMaxBalance,
+                             @Value("${bank.wallet.daily-transfer-limit}") BigDecimal walletDailyTransferLimit,
+                             @Value("${bank.wallet.daily-transaction-limit}") int walletDailyTransactionLimit) {
         this.walletRepository = walletRepository;
         this.processedRequestRepository = processedRequestRepository;
         this.accountClient = accountClient;
         this.transactionClient = transactionClient;
         this.walletMapper = walletMapper;
+        this.walletMaxBalance = walletMaxBalance;
+        this.walletDailyTransferLimit = walletDailyTransferLimit;
+        this.walletDailyTransactionLimit = walletDailyTransactionLimit;
     }
 
     // ------------------------------------------------------------------ create
@@ -88,10 +94,10 @@ public class WalletServiceImpl implements WalletService {
                 .linkedAccountId(request.getLinkedAccountId())
                 .walletType(request.getWalletType())
                 .balance(BigDecimal.ZERO)
-                .maxBalance(WalletConstants.MAX_BALANCE)
-                .dailyTransferLimit(WalletConstants.DAILY_TRANSFER_LIMIT)
+                .maxBalance(walletMaxBalance)
+                .dailyTransferLimit(walletDailyTransferLimit)
                 .dailyTransferredAmount(BigDecimal.ZERO)
-                .dailyTransactionLimit(WalletConstants.DAILY_TRANSACTION_LIMIT)
+                .dailyTransactionLimit(walletDailyTransactionLimit)
                 .todayTransactionCount(0)
                 .lastLimitResetDate(today)
                 .build();
@@ -116,23 +122,30 @@ public class WalletServiceImpl implements WalletService {
             return replay.get();
         }
 
-        Wallet wallet = getWalletOrThrow(request.getWalletId());
+        Wallet wallet = getOwnedWalletOrThrow(request.getWalletId(), customerId);
         boolean accountDebited = false;
         try {
             validateAmountPositive(request.getAmount());
             // Cheap pre-check before touching the account (validate first, then mutate).
             preCheckCredit(wallet, request.getAmount());
 
-            // 1) Debit the linked account first (PRD §6.16: debit source, then credit).
-            AccountOperationResponse debit = accountClient.withdraw(AccountOperationRequest.builder()
-                    .accountId(wallet.getLinkedAccountId())
-                    .amount(request.getAmount())
-                    .idempotencyKey(request.getIdempotencyKey() + ":acct-debit")
-                    .build());
-            if (!debit.isSuccess()) {
-                throw new BusinessRuleException(mapAccountFailure(debit.getFailureReason()),
-                        "Account debit failed: " + debit.getFailureReason());
+            // 1) Take the money out of the linked account first, then top up the wallet.
+            //    A successful withdrawal comes back as HTTP 200; if the account says no it's a
+            //    400 (FeignException.BadRequest). So a normal return means the money really
+            //    moved, and a 400 means nothing left the account.
+            try {
+                accountClient.withdraw(AccountOperationRequest.builder()
+                        .accountId(wallet.getLinkedAccountId())
+                        .amount(request.getAmount())
+                        .idempotencyKey(request.getIdempotencyKey() + ":acct-debit")
+                        .build());
+            } catch (FeignException.BadRequest e) {
+                // Account rejected the debit (insufficient balance, limit, invalid amount).
+                // Nothing was debited, so accountDebited stays false and no refund is needed.
+                throw new BusinessRuleException(mapAccountFailure(e),
+                        "Account debit rejected: " + e.getMessage());
             }
+            // HTTP 200 => the account was really debited; any later failure must refund it.
             accountDebited = true;
 
             // 2) Credit the wallet (optimistic-locked, retried).
@@ -147,7 +160,7 @@ public class WalletServiceImpl implements WalletService {
             return store(request.getIdempotencyKey(), result);
 
         } catch (BusinessRuleException e) {
-            // If the account was already debited, refund it (compensating reversal, §6.16).
+            // If we already pulled money from the account, put it back.
             if (accountDebited) {
                 compensateAccountCredit(wallet, request.getAmount(), request.getIdempotencyKey());
             }
@@ -170,7 +183,9 @@ public class WalletServiceImpl implements WalletService {
             return replay.get();
         }
 
-        Wallet from = getWalletOrThrow(request.getFromWalletId());
+        // Caller must own the source wallet; the destination may belong to another
+        // customer (you can transfer money to someone else), so it need only exist.
+        Wallet from = getOwnedWalletOrThrow(request.getFromWalletId(), customerId);
         Wallet to = getWalletOrThrow(request.getToWalletId());
         try {
             if (from.getId().equals(to.getId())) {
@@ -184,7 +199,7 @@ public class WalletServiceImpl implements WalletService {
             // 1) Debit source (optimistic-locked, retried; re-validates balance & limits).
             Wallet debited = withRetry(() -> debitWallet(request.getFromWalletId(), request.getAmount()));
 
-            // 2) Credit destination; on failure, reverse the source debit (§6.16).
+            // 2) Add it to the destination; if that fails, put it back on the source.
             Wallet credited;
             try {
                 credited = withRetry(() -> creditWallet(request.getToWalletId(), request.getAmount()));
@@ -205,7 +220,7 @@ public class WalletServiceImpl implements WalletService {
             return failed(TransactionType.WALLET_TRANSFER, request.getAmount(), from, e, request.getIdempotencyKey(),
                     PartyType.WALLET, from.getId(), PartyType.WALLET, to.getId());
         }
-        // ConcurrentUpdateException propagates → HTTP 409 (money already reversed if debited).
+        // A ConcurrentUpdateException bubbles up as a 409 (any debit has already been undone above).
     }
 
     // ---------------------------------------------------------------- pay bill
@@ -217,7 +232,7 @@ public class WalletServiceImpl implements WalletService {
             return replay.get();
         }
 
-        Wallet wallet = getWalletOrThrow(request.getWalletId());
+        Wallet wallet = getOwnedWalletOrThrow(request.getWalletId(), customerId);
         try {
             validateAmountPositive(request.getAmount());
             // Debit the wallet; receiver is an external MERCHANT, so nothing to credit.
@@ -240,18 +255,17 @@ public class WalletServiceImpl implements WalletService {
     // -------------------------------------------------------------------- list
 
     @Override
-    public Page<WalletResponse> listByCustomer(String customerId, Pageable pageable) {
-        return walletRepository.findByCustomerId(customerId, pageable).map(walletMapper::toResponse);
+    public Page<WalletResponse> listByCustomer(String callerCustomerId, String targetCustomerId, Pageable pageable) {
+        // You can only list your own wallets.
+        assertSelf(callerCustomerId, targetCustomerId);
+        return walletRepository.findByCustomerId(targetCustomerId, pageable).map(walletMapper::toResponse);
     }
 
     // =============================================================== internals
 
-    /**
-     * Debit a wallet: re-read fresh, lazy-reset counters, validate balance and daily
-     * limits, then mutate. Throws {@link BusinessRuleException} on any rule violation
-     * (no state is persisted in that case). Save may raise
-     * {@link OptimisticLockingFailureException}, retried by the caller.
-     */
+    // Take money out of a wallet: grab a fresh copy, roll over the daily counters if it's a new day,
+    // make sure the balance and daily limits are OK, then save. If a rule is broken we throw and
+    // change nothing. The save can lose a race, in which case the caller retries.
     private Wallet debitWallet(String walletId, BigDecimal amount) {
         Wallet wallet = getWalletOrThrow(walletId);
         applyLazyReset(wallet);
@@ -281,10 +295,9 @@ public class WalletServiceImpl implements WalletService {
         return walletRepository.save(wallet);
     }
 
-    /**
-     * Credit a wallet: re-read fresh, lazy-reset, validate the ₹50,000 cap, then
-     * mutate. Incoming money does not count against the daily transfer amount.
-     */
+    // Add money to a wallet: grab a fresh copy, roll over the daily counters if needed, check we
+    // won't blow past the max balance, then save. Money coming in doesn't count against the daily
+    // transfer limit.
     private Wallet creditWallet(String walletId, BigDecimal amount) {
         Wallet wallet = getWalletOrThrow(walletId);
         applyLazyReset(wallet);
@@ -300,10 +313,8 @@ public class WalletServiceImpl implements WalletService {
         return walletRepository.save(wallet);
     }
 
-    /**
-     * Reverse a source debit after a failed downstream credit (§6.16). Retried; if it
-     * ultimately fails the discrepancy is logged at ERROR for manual reconciliation.
-     */
+    // Put money back on the source wallet after the other side of a transfer failed. We retry;
+    // if it still won't go through, we log an error so someone can sort it out by hand.
     private void reverseDebit(String walletId, BigDecimal amount) {
         try {
             withRetry(() -> {
@@ -321,23 +332,20 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    /**
-     * Refund the linked account after a failed wallet top-up credit (§6.16).
-     * Best-effort with logging; not retried at the Feign layer beyond one attempt here.
-     */
+    // Refund the linked account when a top-up took the money out but couldn't credit the wallet.
+    // We try a few times and log an error if it never succeeds.
     private void compensateAccountCredit(Wallet wallet, BigDecimal amount, String idempotencyKey) {
         for (int attempt = 1; attempt <= WalletConstants.MAX_REVERSAL_RETRIES; attempt++) {
             try {
-                AccountOperationResponse res = accountClient.deposit(AccountOperationRequest.builder()
+                // A normal return is HTTP 200 => the credit was applied. A business rejection
+                // (HTTP 400) or any transport error throws and is retried below.
+                accountClient.deposit(AccountOperationRequest.builder()
                         .accountId(wallet.getLinkedAccountId())
                         .amount(amount)
                         .idempotencyKey(idempotencyKey + ":acct-refund")
                         .build());
-                if (res.isSuccess()) {
-                    log.info("Account refund applied: accountId={} amount={}", wallet.getLinkedAccountId(), amount);
-                    return;
-                }
-                log.warn("Account refund attempt {} returned {}", attempt, res.getFailureReason());
+                log.info("Account refund applied: accountId={} amount={}", wallet.getLinkedAccountId(), amount);
+                return;
             } catch (RuntimeException e) {
                 log.warn("Account refund attempt {} failed: {}", attempt, e.getMessage());
             }
@@ -346,7 +354,7 @@ public class WalletServiceImpl implements WalletService {
                 wallet.getLinkedAccountId(), amount);
     }
 
-    /** Lazy daily-counter reset (PRD §6.14). Mutates in-memory; persisted on next save. */
+    // If it's a new day, zero out the daily counters. Done in memory here and saved on the next write.
     private void applyLazyReset(Wallet wallet) {
         LocalDate today = LocalDate.now(ZONE);
         if (!today.equals(wallet.getLastLimitResetDate())) {
@@ -356,7 +364,7 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    /** Read-only pre-check of the ₹50,000 cap on a credit target. */
+    // A quick look-but-don't-touch check that the incoming money won't push the wallet over its cap.
     private void preCheckCredit(Wallet wallet, BigDecimal amount) {
         if (amount != null && amount.signum() > 0
                 && wallet.getBalance().add(amount).compareTo(wallet.getMaxBalance()) > 0) {
@@ -377,7 +385,33 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new WalletNotFoundException("Wallet not found: " + walletId));
     }
 
-    /** Retry a balance-mutating write on optimistic-lock conflict (PRD §6.15). */
+    // Fetch a wallet and make sure the logged-in customer owns it. Every operation starts here so
+    // nobody can touch someone else's wallet. No such wallet is a 404; wrong owner is a 403.
+    private Wallet getOwnedWalletOrThrow(String walletId, String customerId) {
+        Wallet wallet = getWalletOrThrow(walletId);
+        assertOwnership(wallet, customerId);
+        return wallet;
+    }
+
+    // Turn the request away with a 403 unless this customer actually owns the wallet.
+    private void assertOwnership(Wallet wallet, String customerId) {
+        if (customerId == null || !customerId.equals(wallet.getCustomerId())) {
+            log.warn("Ownership check failed: customerId={} does not own walletId={} (owner={})",
+                    customerId, wallet.getId(), wallet.getCustomerId());
+            throw new WalletAccessDeniedException(
+                    "You do not have access to wallet " + wallet.getId());
+        }
+    }
+
+    // Turn the request away with a 403 unless the caller is asking about their own customer id.
+    private void assertSelf(String callerCustomerId, String targetCustomerId) {
+        if (callerCustomerId == null || !callerCustomerId.equals(targetCustomerId)) {
+            log.warn("Customer {} attempted to list wallets of {}", callerCustomerId, targetCustomerId);
+            throw new WalletAccessDeniedException("You may only access your own wallets");
+        }
+    }
+
+    // Retry a balance-changing save when another update beat us to it, up to a few attempts.
     private <T> T withRetry(Supplier<T> operation) {
         int attempt = 0;
         while (true) {
@@ -451,15 +485,13 @@ public class WalletServiceImpl implements WalletService {
                 .message(ex.getMessage())
                 .timestamp(Instant.now())
                 .build();
-        // Failed transactions are persisted too (PRD §6.6).
+        // We record failed transactions too, not just the ones that went through.
         recordLedger(type, senderType, senderId, receiverType, receiverId, result);
         return store(key, result);
     }
 
-    /**
-     * Best-effort ledger write (PRD §6.16): if it fails after money already moved, log
-     * at ERROR and still report success to the client — never roll back settled money.
-     */
+    // Write the transaction to the ledger, best-effort. If it fails after money has already moved,
+    // we log an error but still tell the client it worked - we never undo money that's settled.
     private void recordLedger(TransactionType type, PartyType senderType, String senderId,
                               PartyType receiverType, String receiverId, TransactionResult result) {
         try {
@@ -483,14 +515,23 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    private FailureReason mapAccountFailure(String reason) {
-        if (reason == null) {
-            return FailureReason.INVALID_ACCOUNT;
-        }
-        try {
-            return FailureReason.valueOf(reason);
-        } catch (IllegalArgumentException e) {
+    // Work out why the account said no to a withdrawal. Its error only gives us a message to read,
+    // so we look for familiar words and default to "not enough money" - the usual reason.
+    private FailureReason mapAccountFailure(FeignException e) {
+        String body = e.contentUTF8();
+        String text = body == null ? "" : body.toLowerCase(java.util.Locale.ROOT);
+        if (text.contains("insufficient")) {
             return FailureReason.INSUFFICIENT_BALANCE;
         }
+        if (text.contains("limit")) {
+            return FailureReason.DAILY_LIMIT_EXCEEDED;
+        }
+        if (text.contains("amount")) {
+            return FailureReason.INVALID_AMOUNT;
+        }
+        if (text.contains("account")) {
+            return FailureReason.INVALID_ACCOUNT;
+        }
+        return FailureReason.INSUFFICIENT_BALANCE;
     }
 }

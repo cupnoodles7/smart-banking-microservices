@@ -9,9 +9,7 @@ import com.smartbank.wallet.dto.response.WalletResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-/**
- * Wallet business operations (PRD §6.3, §6.7).
- */
+// The things a wallet can do: create one, top it up, transfer, pay a bill, and list a customer's wallets.
 public interface WalletService {
 
     WalletResponse createWallet(String customerId, CreateWalletRequest request);
@@ -22,5 +20,5 @@ public interface WalletService {
 
     TransactionResult payBill(String customerId, PayBillRequest request);
 
-    Page<WalletResponse> listByCustomer(String customerId, Pageable pageable);
+    Page<WalletResponse> listByCustomer(String callerCustomerId, String targetCustomerId, Pageable pageable);
 }

@@ -12,10 +12,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/**
- * Ledger write payload mirroring the Transaction schema (PRD §6.5).
- * Records are write-once and already in their final state.
- */
+// The transaction details we hand to the Transaction Service; once written, a record never changes.
 @Data
 @Builder
 @NoArgsConstructor
