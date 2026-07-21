@@ -26,7 +26,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,circuitbreakers,circuitbreakerevents
 
   endpoint:
     health:
@@ -40,3 +40,14 @@ management:
     metrics:
       export:
         enabled: true
+
+# Circuit Breaker (Resilience4j) - guards the account's best-effort call to the Transaction Service.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        slidingWindowSize: 10
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3

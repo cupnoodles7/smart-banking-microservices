@@ -9,7 +9,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,circuitbreakers,circuitbreakerevents
 
   endpoint:
     health:
@@ -23,3 +23,17 @@ management:
     metrics:
       export:
         enabled: true
+
+# Circuit Breaker (Resilience4j) - guards the auth service's call to the User Service during registration.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        slidingWindowSize: 10
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        # 4xx from the User Service (e.g. duplicate email) are business rejections, not outages.
+        ignoreExceptions:
+          - org.springframework.web.client.HttpClientErrorException
