@@ -55,6 +55,8 @@ application-local.yml
 application-local.properties
 .env
 .env.local
+# Postman collection carries a real internal API key value locally
+postman/
 
 # ---- Local docs / notes (not for the repo) ----
 AUTH_SERVICE_NOTES.md
