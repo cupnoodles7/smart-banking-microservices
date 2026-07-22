@@ -8,6 +8,8 @@ import com.smartbank.user.dto.response.UserResponse;
 import com.smartbank.user.exception.ForbiddenException;
 import com.smartbank.user.security.AuthenticatedCustomer;
 import com.smartbank.user.service.UserService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -124,8 +126,11 @@ public class UserController {
 
     private void requireValidInternalKey(String apiKey) {
         String expected = internalApiProperties.getApiKey();
-        if (!StringUtils.hasText(expected) || !expected.equals(apiKey)) {
-            log.warn("Rejected internal profile-create: missing or invalid internal API key");
+        if (!StringUtils.hasText(expected) || !StringUtils.hasText(apiKey)
+                || !MessageDigest.isEqual(
+                        expected.getBytes(StandardCharsets.UTF_8),
+                        apiKey.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("Rejected internal call: missing or invalid internal API key");
             throw new ForbiddenException("Invalid internal API key");
         }
     }

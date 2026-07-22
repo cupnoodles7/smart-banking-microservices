@@ -9,14 +9,18 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import lombok.Getter;
+import lombok.Setter;
+
 //customerId is the stable identity that downstream services (account/wallet/transaction) key on; it is generated once at registration.
+@Getter
+@Setter
 @Document(collection = "users")
 public class User {
 
     @Id
     private String id;
 
-    
     @Indexed(unique = true)
     private String customerId;
 
@@ -37,7 +41,6 @@ public class User {
 
     private LocalDateTime lastLogin;
 
-   
     @JsonIgnore // stored refresh token must never leak to a client
     private String refreshToken;
 
@@ -49,98 +52,11 @@ public class User {
         this.roles.add("USER");
     }
 
+    // Explicit, password-safe toString (never log the hash or refresh token).
     @Override
     public String toString() {
         return "User [id=" + id + ", customerId=" + customerId + ", username=" + username
                 + ", email=" + email + ", roles=" + roles + ", enabled=" + enabled
                 + ", createdAt=" + createdAt + ", lastLogin=" + lastLogin + "]";
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getCustomerId() {
-        return customerId;
-    }
-
-    public void setCustomerId(String customerId) {
-        this.customerId = customerId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public Set<String> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<String> roles) {
-        this.roles = roles;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getLastLogin() {
-        return lastLogin;
-    }
-
-    public void setLastLogin(LocalDateTime lastLogin) {
-        this.lastLogin = lastLogin;
-    }
-
-    public String getRefreshToken() {
-        return refreshToken;
-    }
-
-    public void setRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
-
-    public LocalDateTime getRefreshTokenExpiry() {
-        return refreshTokenExpiry;
-    }
-
-    public void setRefreshTokenExpiry(LocalDateTime refreshTokenExpiry) {
-        this.refreshTokenExpiry = refreshTokenExpiry;
     }
 }
