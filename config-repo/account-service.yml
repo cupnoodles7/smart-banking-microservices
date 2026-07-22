@@ -20,8 +20,6 @@ bank:
     max-balance: 1000000
     daily-transfer-limit: 500000
     daily-transaction-limit: 100
-  concurrency:
-    max-write-retries: 3
 management:
   endpoints:
     web:
