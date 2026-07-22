@@ -36,14 +36,11 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
-    private final AuthenticatedCustomer authenticatedCustomer;
     private final InternalApiProperties internalApiProperties;
 
     public UserController(UserService userService,
-                          AuthenticatedCustomer authenticatedCustomer,
                           InternalApiProperties internalApiProperties) {
         this.userService = userService;
-        this.authenticatedCustomer = authenticatedCustomer;
         this.internalApiProperties = internalApiProperties;
     }
 
@@ -62,7 +59,7 @@ public class UserController {
     public ResponseEntity<UserResponse> getUser(
             @PathVariable String id,
             @RequestHeader(value = UserServiceConstants.HEADER_CUSTOMER_ID, required = false) String callerId) {
-        authenticatedCustomer.authorizeSelfAccess(callerId, id);
+        AuthenticatedCustomer.authorizeSelfAccess(callerId, id);
         return ResponseEntity.ok(userService.getById(id));
     }
 
@@ -83,7 +80,7 @@ public class UserController {
             @PathVariable String id,
             @RequestHeader(value = UserServiceConstants.HEADER_CUSTOMER_ID, required = false) String callerId,
             @Valid @RequestBody UpdateUserRequest request) {
-        authenticatedCustomer.authorizeSelfAccess(callerId, id);
+        AuthenticatedCustomer.authorizeSelfAccess(callerId, id);
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 

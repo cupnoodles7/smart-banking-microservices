@@ -1,5 +1,7 @@
 package com.smartbank.user.dto.response;
 
+import com.smartbank.user.dto.request.AddressDto;
+
 import java.time.Instant;
 
 public class UserResponse {
@@ -8,7 +10,7 @@ public class UserResponse {
     private String fullName;
     private String email;
     private String phoneNumber;
-    private AddressResponse address;
+    private AddressDto address;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -44,11 +46,11 @@ public class UserResponse {
         this.phoneNumber = phoneNumber;
     }
 
-    public AddressResponse getAddress() {
+    public AddressDto getAddress() {
         return address;
     }
 
-    public void setAddress(AddressResponse address) {
+    public void setAddress(AddressDto address) {
         this.address = address;
     }
 
