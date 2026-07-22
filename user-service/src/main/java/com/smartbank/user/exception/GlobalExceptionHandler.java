@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -40,10 +41,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
     }
 
-    /** Structural validation failure on the request body (@Valid). */
+    /**
+     * Structural/format validation failure on the request body (@Valid). Email and phone
+     * format errors are re-raised as the dedicated InvalidEmailException /
+     * InvalidPhoneNumberException so those types remain the single semantic carrier for
+     * bad email/phone input; any other field error falls back to a generic 400.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleBeanValidation(MethodArgumentNotValidException ex,
                                                               HttpServletRequest request) {
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            if ("email".equals(fe.getField())) {
+                return handleInvalidField(new InvalidEmailException(fe.getDefaultMessage()), request);
+            }
+            if ("phoneNumber".equals(fe.getField())) {
+                return handleInvalidField(new InvalidPhoneNumberException(fe.getDefaultMessage()), request);
+            }
+        }
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .collect(Collectors.joining(", "));

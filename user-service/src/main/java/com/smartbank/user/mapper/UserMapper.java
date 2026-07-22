@@ -3,7 +3,6 @@ package com.smartbank.user.mapper;
 import com.smartbank.user.dto.request.AddressDto;
 import com.smartbank.user.dto.request.CreateUserRequest;
 import com.smartbank.user.dto.request.UpdateUserRequest;
-import com.smartbank.user.dto.response.AddressResponse;
 import com.smartbank.user.dto.response.UserResponse;
 import com.smartbank.user.entity.User;
 import org.springframework.stereotype.Component;
@@ -38,7 +37,7 @@ public class UserMapper {
         response.setFullName(user.getFullName());
         response.setEmail(user.getEmail());
         response.setPhoneNumber(user.getPhoneNumber());
-        response.setAddress(toAddressResponse(user.getAddress()));
+        response.setAddress(toAddressDto(user.getAddress()));
         response.setCreatedAt(user.getCreatedAt());
         response.setUpdatedAt(user.getUpdatedAt());
         return response;
@@ -56,15 +55,15 @@ public class UserMapper {
         return address;
     }
 
-    private AddressResponse toAddressResponse(User.Address address) {
+    private AddressDto toAddressDto(User.Address address) {
         if (address == null) {
             return null;
         }
-        AddressResponse response = new AddressResponse();
-        response.setLine1(address.getLine1());
-        response.setCity(address.getCity());
-        response.setState(address.getState());
-        response.setPincode(address.getPincode());
-        return response;
+        AddressDto dto = new AddressDto();
+        dto.setLine1(address.getLine1());
+        dto.setCity(address.getCity());
+        dto.setState(address.getState());
+        dto.setPincode(address.getPincode());
+        return dto;
     }
 }

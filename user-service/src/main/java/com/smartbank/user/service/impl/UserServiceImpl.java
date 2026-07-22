@@ -5,13 +5,10 @@ import com.smartbank.user.dto.request.UpdateUserRequest;
 import com.smartbank.user.dto.response.UserResponse;
 import com.smartbank.user.entity.User;
 import com.smartbank.user.exception.DuplicateCustomerException;
-import com.smartbank.user.exception.InvalidEmailException;
-import com.smartbank.user.exception.InvalidPhoneNumberException;
 import com.smartbank.user.exception.UserNotFoundException;
 import com.smartbank.user.mapper.UserMapper;
 import com.smartbank.user.repository.UserRepository;
 import com.smartbank.user.service.UserService;
-import com.smartbank.user.util.ValidationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -38,8 +35,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse createUser(CreateUserRequest request) {
-        validateFormat(request.getEmail(), request.getPhoneNumber());
-
         // Auth supplies the id (== customerId); reject a collision rather than silently
         // overwriting an existing profile via save().
         if (userRepository.existsById(request.getId())) {
@@ -64,8 +59,6 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(String id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("No user found with id " + id));
-
-        validateFormat(request.getEmail(), request.getPhoneNumber());
 
         // Only enforce uniqueness against *other* documents when the value actually changes.
         if (!request.getEmail().equals(user.getEmail())
@@ -92,18 +85,6 @@ public class UserServiceImpl implements UserService {
             log.info("Deleted user profile id={}", id);
         } else {
             log.info("Delete no-op: no user profile with id={}", id);
-        }
-    }
-
-    /** PRD sec 7.2: email must contain '@', phone must be exactly 10 digits. */
-    private void validateFormat(String email, String phoneNumber) {
-        if (!ValidationUtils.isValidEmail(email)) {
-            log.warn("Rejected write: invalid email format ({})", email);
-            throw new InvalidEmailException("Email must contain '@': " + email);
-        }
-        if (!ValidationUtils.isValidPhoneNumber(phoneNumber)) {
-            log.warn("Rejected write: invalid phone format ({})", phoneNumber);
-            throw new InvalidPhoneNumberException("Phone number must be exactly 10 digits: " + phoneNumber);
         }
     }
 }
