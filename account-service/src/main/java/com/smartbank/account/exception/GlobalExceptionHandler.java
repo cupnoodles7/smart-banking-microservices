@@ -31,15 +31,9 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({
-            InvalidAmountException.class,
-            InvalidAccountException.class,
-            InsufficientBalanceException.class,
-            DailyLimitExceededException.class,
-            SelfTransferException.class
-    })
+    @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(
-            RuntimeException ex,
+            BusinessRuleException ex,
             HttpServletRequest request) {
 
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);

@@ -10,12 +10,8 @@ import com.smartbank.account.entity.AccountType;
 import com.smartbank.account.entity.FailureReason;
 import com.smartbank.account.entity.TransactionType;
 import com.smartbank.account.exception.AccountNotFoundException;
+import com.smartbank.account.exception.BusinessRuleException;
 import com.smartbank.account.exception.CustomerNotFoundException;
-import com.smartbank.account.exception.DailyLimitExceededException;
-import com.smartbank.account.exception.InsufficientBalanceException;
-import com.smartbank.account.exception.InvalidAccountException;
-import com.smartbank.account.exception.InvalidAmountException;
-import com.smartbank.account.exception.SelfTransferException;
 import com.smartbank.account.exception.UnauthorizedAccountAccessException;
 import com.smartbank.account.exception.UserServiceUnavailableException;
 import com.smartbank.account.repository.AccountRepository;
@@ -129,7 +125,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Invalid deposit amount {} for account {}", amount, account.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.DEPOSIT,
                     account.getId(), account.getId(), amount, FailureReason.INVALID_AMOUNT);
-            throw new InvalidAmountException("Amount must be greater than zero");
+            throw new BusinessRuleException("Amount must be greater than zero");
         }
 
         DailyLimitResetEvaluator.resetIfNewDay(account);
@@ -140,7 +136,7 @@ public class AccountServiceImpl implements AccountService {
                     amount, account.getMaxBalance(), account.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.DEPOSIT,
                     account.getId(), account.getId(), amount, FailureReason.INVALID_AMOUNT);
-            throw new InvalidAmountException("Deposit would exceed the account's maximum balance");
+            throw new BusinessRuleException("Deposit would exceed the account's maximum balance");
         }
 
         account.setBalance(newBalance);
@@ -163,7 +159,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Invalid withdrawal amount {} for account {}", amount, account.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.WITHDRAW,
                     account.getId(), account.getId(), amount, FailureReason.INVALID_AMOUNT);
-            throw new InvalidAmountException("Amount must be greater than zero");
+            throw new BusinessRuleException("Amount must be greater than zero");
         }
 
         DailyLimitResetEvaluator.resetIfNewDay(account);
@@ -173,7 +169,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Insufficient balance for withdrawal of {} from account {}", amount, account.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.WITHDRAW,
                     account.getId(), account.getId(), amount, FailureReason.INSUFFICIENT_BALANCE);
-            throw new InsufficientBalanceException("Insufficient balance for this withdrawal");
+            throw new BusinessRuleException("Insufficient balance for this withdrawal");
         }
 
         debit(account, amount);
@@ -194,7 +190,7 @@ public class AccountServiceImpl implements AccountService {
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.TRANSFER,
                     request.getFromAccountId(), request.getToAccountId(), request.getAmount(),
                     FailureReason.SELF_TRANSFER);
-            throw new SelfTransferException("Sender and receiver accounts must differ");
+            throw new BusinessRuleException("Sender and receiver accounts must differ");
         }
 
         Account fromAccount = loadOwnedAccount(request.getFromAccountId(), callerCustomerId);
@@ -205,7 +201,7 @@ public class AccountServiceImpl implements AccountService {
                     transactionRecorder.recordFailure(callerCustomerId, TransactionType.TRANSFER,
                             fromAccount.getId(), request.getToAccountId(), request.getAmount(),
                             FailureReason.INVALID_ACCOUNT);
-                    return new InvalidAccountException("Target account does not exist");
+                    return new BusinessRuleException("Target account does not exist");
                 });
 
         BigDecimal amount = request.getAmount();
@@ -213,7 +209,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Invalid transfer amount {} from account {}", amount, fromAccount.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.TRANSFER,
                     fromAccount.getId(), toAccount.getId(), amount, FailureReason.INVALID_AMOUNT);
-            throw new InvalidAmountException("Amount must be greater than zero");
+            throw new BusinessRuleException("Amount must be greater than zero");
         }
 
         DailyLimitResetEvaluator.resetIfNewDay(fromAccount);
@@ -224,7 +220,7 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Insufficient balance for transfer of {} from account {}", amount, fromAccount.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.TRANSFER,
                     fromAccount.getId(), toAccount.getId(), amount, FailureReason.INSUFFICIENT_BALANCE);
-            throw new InsufficientBalanceException("Insufficient balance for this transfer");
+            throw new BusinessRuleException("Insufficient balance for this transfer");
         }
 
         BigDecimal creditedBalance = toAccount.getBalance().add(amount);
@@ -233,7 +229,7 @@ public class AccountServiceImpl implements AccountService {
                     amount, toAccount.getMaxBalance(), toAccount.getId());
             transactionRecorder.recordFailure(callerCustomerId, TransactionType.TRANSFER,
                     fromAccount.getId(), toAccount.getId(), amount, FailureReason.INVALID_ACCOUNT);
-            throw new InvalidAccountException("Transfer would exceed the target account's maximum balance");
+            throw new BusinessRuleException("Transfer would exceed the target account's maximum balance");
         }
 
         debit(fromAccount, amount);
@@ -323,13 +319,13 @@ public class AccountServiceImpl implements AccountService {
             log.warn("Daily transaction count limit reached for account {}", account.getId());
             transactionRecorder.recordFailure(callerCustomerId, type, account.getId(), receiverId,
                     amount, FailureReason.DAILY_LIMIT_EXCEEDED);
-            throw new DailyLimitExceededException("Daily transaction count limit reached");
+            throw new BusinessRuleException("Daily transaction count limit reached");
         }
         if (account.getDailyTransferredAmount().add(amount).compareTo(account.getDailyTransferLimit()) > 0) {
             log.warn("Daily transfer amount limit reached for account {}", account.getId());
             transactionRecorder.recordFailure(callerCustomerId, type, account.getId(), receiverId,
                     amount, FailureReason.DAILY_LIMIT_EXCEEDED);
-            throw new DailyLimitExceededException("Daily transfer amount limit reached");
+            throw new BusinessRuleException("Daily transfer amount limit reached");
         }
     }
 }
