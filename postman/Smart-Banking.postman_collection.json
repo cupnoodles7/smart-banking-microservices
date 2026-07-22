@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b7a1e2c0-5f3a-4a2b-9c11-smartbanking02",
     "name": "Smart Banking & Wallet System",
-    "description": "End-to-end collection for all services (auth, user, account, wallet, transaction) plus the gateway.\n\nRun the folders top-to-bottom (or use the Collection Runner): Auth -> User -> Account -> Wallet -> Transaction -> Gateway.\n\nHOW IT WORKS\n- The 'Auth > Register' request generates a UNIQUE username/email per run (a pre-request script), so every full run creates a brand-new customer whose profile is auto-created in the User Service. This avoids stale-user failures (a customer that has no profile is rejected by account/wallet with 404/503).\n- Register captures customerId; Login captures accessToken/refreshToken/customerId; create requests capture accountId/walletId/transactionId into collection variables.\n- Business folders hit each service DIRECTLY with an X-Customer-Id header (works without the gateway). The 'Gateway' folder proves JWT routing + identity-header injection through :8080.\n\nPREREQS: config-server, eureka and all services must be UP (./run-all.sh). MongoDB on :27017. Build/run with JDK 21.",
+    "description": "End-to-end collection for all services (auth, user, account, wallet, transaction) plus the gateway.\n\nRun the folders top-to-bottom (or use the Collection Runner): Auth -> User -> Account -> Wallet -> Transaction -> Gateway.\n\nHOW IT WORKS\n- The 'Auth > Register' request generates a UNIQUE username/email per run (a pre-request script), so every full run creates a brand-new customer whose profile is auto-created in the User Service. This avoids stale-user failures (a customer that has no profile is rejected by account/wallet with 404/503).\n- Register captures customerId; Login captures accessToken/refreshToken/customerId; create requests capture accountId/walletId/transactionId into collection variables.\n- Business folders hit each service DIRECTLY with an X-Customer-Id header (works without the gateway). The 'Gateway' folder proves JWT routing + identity-header injection through :8080.\n\nPREREQS: config-server, eureka and all services must be UP (./run-all.sh). MongoDB must run as a single-node replica set on :27017 (see docker-compose.yml / README) - account transfers use a multi-document transaction and fail on a standalone mongod. Build/run with JDK 21. To run the two 'User > (internal)' requests directly, set the 'internalUserApiKey' collection variable to your USER_INTERNAL_API_KEY value (from .env).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,7 +18,7 @@
     { "key": "email", "value": "alice@example.com" },
     { "key": "phone", "value": "9990001111" },
     { "key": "password", "value": "secret123" },
-    { "key": "internalUserApiKey", "value": "change-me-internal-user-service-key" },
+    { "key": "internalUserApiKey", "value": "" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "customerId", "value": "" },
@@ -287,7 +287,7 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "X-Customer-Id", "value": "{{customerId}}" }
             ],
-            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":5000}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":5000,\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{accountUrl}}/accounts/deposit", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "deposit" ] }
           }
         },
@@ -304,7 +304,7 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "X-Customer-Id", "value": "{{customerId}}" }
             ],
-            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":1000}", "options": { "raw": { "language": "json" } } },
+            "body": { "mode": "raw", "raw": "{\"accountId\":\"{{accountId}}\",\"amount\":1000,\"idempotencyKey\":\"{{$guid}}\"}", "options": { "raw": { "language": "json" } } },
             "url": { "raw": "{{accountUrl}}/accounts/withdraw", "host": [ "{{accountUrl}}" ], "path": [ "accounts", "withdraw" ] }
           }
         },

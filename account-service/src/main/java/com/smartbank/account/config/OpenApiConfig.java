@@ -14,7 +14,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 
 // Sets the Swagger UI title/blurb, points "Try it out" at the API Gateway,
-// and wires up the JWT Bearer "Authorize" button.
+// and wires up the JWT Bearer "Authorize" button
 @Configuration
 public class OpenApiConfig {
 

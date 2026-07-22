@@ -9,7 +9,7 @@ The microservices track of the Smart Banking & Wallet System
 
 ## Stack
 
-Java 21 · Spring Boot 3.3.5 · Spring Cloud 2023.0.3 · Maven · MongoDB (one DB per service) · JWT (jjwt 0.12).
+Java 21 · Spring Boot 3.3.5 · Spring Cloud 2023.0.3 · Maven · MongoDB (one DB per service, run as a single-node replica set) · Docker · JWT (jjwt 0.12).
 
 ## Layout
 
@@ -24,6 +24,7 @@ bank-microservice/
 ├── account-service/        # savings/current accounts, deposit/withdraw/transfer (:8083)
 ├── wallet-service/         # stored-value wallet: topup/transfer/pay-bill (:8084)
 ├── transaction-service/    # immutable transaction ledger             (:8085)
+├── docker-compose.yml      # MongoDB as a single-node replica set
 └── postman/                # Postman collection for the full API
 ```
 
@@ -40,20 +41,50 @@ bank-microservice/
 | Eureka        | 8761 |
 | Config Server | 8888 |
 
-## Running it
+## Running it (quickstart)
 
-**Prerequisites:** JDK 21, Maven, and MongoDB on `localhost:27017`.
+**Prerequisites:** JDK 21 (the build targets Java 21; a newer JDK works too), Maven, and Docker
+(for MongoDB).
 
-Start and stop the whole stack (config → eureka → business services + gateway, each gated on
-a health check):
+**1. Start MongoDB as a single-node replica set.** A replica set is required because
+`account-service` uses a multi-document transaction for transfers — a standalone `mongod` would
+reject it. The bundled compose file starts Mongo and initialises the set for you:
+
+```
+docker compose up -d      # mongo on :27017, replica set rs0 initialised automatically
+```
+
+Make sure nothing else already holds port `27017` (e.g. a Homebrew `mongod` — `brew services stop mongodb-community`).
+
+**2. Create a `.env`** at the repo root (git-ignored). The services ship with **no** secret
+defaults, so these must be provided — `run-all.sh` sources `.env`, or generates ephemeral secrets
+if it is absent:
+
+```
+JWT_SECRET=$(openssl rand -hex 32)
+USER_INTERNAL_API_KEY=$(openssl rand -hex 24)
+ACCOUNT_DB_URI=mongodb://localhost:27017/account_db?directConnection=true
+```
+
+`ACCOUNT_DB_URI` points account-service at the replica set (`directConnection=true` lets the driver
+run transactions against the single node).
+
+**3. Start the whole stack** (config → eureka → business services + gateway, each gated on a
+health check):
 
 ```
 ./run-all.sh      # start everything;  logs → .run/logs/<service>.log
-./stop-all.sh     # stop everything
+./stop-all.sh     # stop the services  (then `docker compose down` to stop Mongo)
 ```
 
 Or run a single service manually: `cd <service> && mvn spring-boot:run`
 (start `config-server` and `eureka-server` first).
+
+**4. Explore the API.** Once everything is up:
+- **Swagger UI (all five services on one page):** http://localhost:8080/swagger-ui.html — click
+  **Authorize**, paste a token from `POST /auth/login`, then "Try it out" routes through the Gateway.
+- **Postman:** import `postman/Smart-Banking.postman_collection.json` and use **Run collection** — it
+  registers a fresh user, logs in, and chains the IDs through every service. See [Postman](#postman).
 
 ## Configuration model
 
@@ -68,24 +99,32 @@ Or run a single service manually: `cd <service> && mvn spring-boot:run`
 
 ### Secrets
 
+No secrets are committed — the configs reference these env vars with **no defaults**, so a service
+fails to start if they are unset:
+
 - `JWT_SECRET` — shared HMAC signing key for JWTs (identical on Auth + Gateway, ≥ 256 bits).
 - `USER_INTERNAL_API_KEY` — shared key guarding user-service's `/users/internal` endpoints.
 
-For local dev, `run-all.sh` loads a git-ignored `.env` if present, otherwise generates
-ephemeral secrets for the run. Create a `.env` at the repo root to pin stable values:
+For local dev, `run-all.sh` loads a git-ignored `.env` if present, otherwise generates ephemeral
+secrets for the run. See [Running it](#running-it-quickstart) for a ready-to-use `.env`.
 
 
 ## Authentication & identity
 
 - Public routes (no token): `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`.
   Every other route through the Gateway requires a valid `Authorization: Bearer <token>` JWT.
-- The Gateway validates the JWT and injects identity headers downstream —
-  `X-Customer-Id`, `X-Auth-Username`, `X-Auth-Roles`. Its signing secret must match the Auth
-  Service's — both read the `JWT_SECRET` env var (see **Secrets** above).
+- The Gateway accepts only **access** tokens (a refresh token is rejected), strips any
+  client-supplied `X-Customer-Id` / `X-Auth-*` / `X-User-Email` / `X-Internal-Api-Key` on the way
+  in, and then injects trusted identity headers from the JWT: `X-Customer-Id`, `X-Auth-Username`,
+  `X-User-Email`, `X-Auth-Roles`. Its signing secret must match the Auth Service's — both read the
+  `JWT_SECRET` env var (see **Secrets** above).
 - **Calling a service directly** (bypassing the Gateway, e.g. on its own port) means you must
   send those identity headers yourself — the tables below note which header each route needs.
-- `*/internal` routes are service-to-service only (not exposed through the Gateway) and are
-  guarded by the `X-Internal-Api-Key` header.
+- **Internal routes.** `user-service`'s `/users/internal*` require the `X-Internal-Api-Key` header
+  (value = `USER_INTERNAL_API_KEY`, compared in constant time). Because the Gateway strips that
+  header, they're reachable only by direct service-to-service calls, not through the public
+  Gateway. `transaction-service`'s `/transactions/internal` has no separate key — through the
+  Gateway it just needs a valid JWT like any other route.
 
 ## API documentation (Swagger / OpenAPI)
 
@@ -116,7 +155,7 @@ Base paths are shown per service. Through the Gateway (`:8080`) the paths are id
 
 | Method | Path             | Auth / headers            | Body / notes |
 |--------|------------------|---------------------------|--------------|
-| POST   | `/auth/register` | public                    | `{username, email, password, fullName, phoneNumber, address{line1,city,state,pincode}}` → **201** `{customerId, username, email, roles}`. Also creates the customer profile in User Service. |
+| POST   | `/auth/register` | public                    | `{username, email, password, fullName, phoneNumber, address{line1,city,state,pincode}}` → **201** `{message, customerId, username, email, roles}`. Also creates the customer profile in User Service. |
 | POST   | `/auth/login`    | public                    | `{usernameOrEmail, password}` → **200** `{token, refreshToken, customerId, username, email, roles, expiresIn}` |
 | POST   | `/auth/refresh`  | public                    | `{refreshToken}` → **200** new access token |
 | POST   | `/auth/validate` | `Authorization: Bearer`   | → `{valid, username, customerId, roles}` |
@@ -138,9 +177,9 @@ Base paths are shown per service. Through the Gateway (`:8080`) the paths are id
 | Method | Path                          | Body / notes |
 |--------|-------------------------------|--------------|
 | POST   | `/accounts`                   | `{accountType: SAVINGS\|CURRENT}` → **201** account |
-| POST   | `/accounts/deposit`           | `{accountId, amount}` → **200** updated account |
-| POST   | `/accounts/withdraw`          | `{accountId, amount}` → **200** updated account |
-| POST   | `/accounts/transfer`          | `{fromAccountId, toAccountId, amount}` → **200** |
+| POST   | `/accounts/deposit`           | `{accountId, amount, [idempotencyKey]}` → **200** updated account. Optional `idempotencyKey` makes the call replay-safe. |
+| POST   | `/accounts/withdraw`          | `{accountId, amount, [idempotencyKey]}` → **200** updated account. Optional `idempotencyKey` makes the call replay-safe. |
+| POST   | `/accounts/transfer`          | `{fromAccountId, toAccountId, amount}` → **200** (atomic — runs as a single MongoDB multi-document transaction) |
 | GET    | `/accounts/customer/{customerId}` | list the caller's accounts |
 
 ### Wallet Service — `:8084`  (all routes need `X-Customer-Id`)
@@ -213,3 +252,7 @@ it and use **Run collection** (Collection Runner) to execute the folders top-to-
 Register/Login capture the token and IDs into collection variables that later requests reuse, so
 run it in order (or with **No Environment** selected) rather than sending the dependent requests
 individually. The Actuator folder is independent and can be run on its own.
+
+Two notes: Mongo must be a single-node replica set (see [Running it](#running-it-quickstart)) or the
+Account **Transfer** request 500s; and to run the two **User → *(internal)*** requests directly, set
+the `internalUserApiKey` collection variable to your `USER_INTERNAL_API_KEY` value.

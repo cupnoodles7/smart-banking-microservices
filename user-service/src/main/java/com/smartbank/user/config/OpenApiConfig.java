@@ -26,8 +26,9 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("User Service API")
-                        .description("Customer profile management. "
-                                + "Every call needs the X-Customer-Id header the API Gateway adds after login.")
+                        .description("Customer profile management. Profile reads/updates need the "
+                                + "X-Customer-Id header the API Gateway adds after login; the /users/internal "
+                                + "service-to-service routes use the X-Internal-Api-Key header instead.")
                         .version("v1"))
                 .servers(List.of(new Server()
                         .url(gatewayUrl)
