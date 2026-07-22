@@ -8,6 +8,7 @@ import com.smartbank.account.dto.response.AccountResponse;
 import com.smartbank.account.entity.Account;
 import com.smartbank.account.entity.AccountType;
 import com.smartbank.account.entity.FailureReason;
+import com.smartbank.account.entity.ProcessedOperation;
 import com.smartbank.account.entity.TransactionType;
 import com.smartbank.account.exception.AccountNotFoundException;
 import com.smartbank.account.exception.CustomerNotFoundException;
@@ -19,12 +20,14 @@ import com.smartbank.account.exception.SelfTransferException;
 import com.smartbank.account.exception.UnauthorizedAccountAccessException;
 import com.smartbank.account.exception.UserServiceUnavailableException;
 import com.smartbank.account.repository.AccountRepository;
+import com.smartbank.account.repository.ProcessedOperationRepository;
 import com.smartbank.account.service.AccountService;
 import com.smartbank.account.util.DailyLimitResetEvaluator;
 import com.smartbank.account.util.TransactionRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -36,9 +39,11 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class AccountServiceImpl implements AccountService {
@@ -47,6 +52,7 @@ public class AccountServiceImpl implements AccountService {
     private static final String CUSTOMER_ID_HEADER = "X-Customer-Id";
 
     private final AccountRepository repository;
+    private final ProcessedOperationRepository processedOperationRepository;
     private final RestTemplate restTemplate;
     private final TransactionRecorder transactionRecorder;
     private final boolean userValidationEnabled;
@@ -59,6 +65,7 @@ public class AccountServiceImpl implements AccountService {
 
     public AccountServiceImpl(
             AccountRepository repository,
+            ProcessedOperationRepository processedOperationRepository,
             RestTemplate restTemplate,
             TransactionRecorder transactionRecorder,
             @Value("${user-service.validation-enabled:true}") boolean userValidationEnabled,
@@ -69,6 +76,7 @@ public class AccountServiceImpl implements AccountService {
             @Value("${bank.current.daily-transfer-limit}") BigDecimal currentDailyTransferLimit,
             @Value("${bank.current.daily-transaction-limit}") int currentDailyTransactionLimit) {
         this.repository = repository;
+        this.processedOperationRepository = processedOperationRepository;
         this.restTemplate = restTemplate;
         this.transactionRecorder = transactionRecorder;
         this.userValidationEnabled = userValidationEnabled;
@@ -122,6 +130,16 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AccountResponse deposit(String callerCustomerId, DepositRequest request) {
         requireCallerId(callerCustomerId);
+
+        // Idempotency: if this exact operation was already applied, replay the stored result instead
+        // of crediting again (protects against Wallet Service refund retries after a timeout).
+        Optional<AccountResponse> replay = replayIfProcessed(request.getIdempotencyKey());
+        if (replay.isPresent()) {
+            log.info("Idempotent replay - deposit key={} already applied, not crediting again",
+                    request.getIdempotencyKey());
+            return replay.get();
+        }
+
         Account account = loadOwnedAccount(request.getAccountId(), callerCustomerId);
         BigDecimal amount = request.getAmount();
 
@@ -149,13 +167,25 @@ public class AccountServiceImpl implements AccountService {
         Account saved = repository.save(account);
 
         log.info("Deposited {} into account {}", amount, saved.getId());
+        AccountResponse response = AccountResponse.from(saved);
+        rememberProcessed(request.getIdempotencyKey(), response);
         transactionRecorder.recordDeposit(callerCustomerId, saved.getId(), amount, saved.getUpdatedAt());
-        return AccountResponse.from(saved);
+        return response;
     }
 
     @Override
     public AccountResponse withdraw(String callerCustomerId, WithdrawRequest request) {
         requireCallerId(callerCustomerId);
+
+        // Idempotency: if this exact operation was already applied, replay the stored result instead
+        // of debiting again (protects against retries after a timeout).
+        Optional<AccountResponse> replay = replayIfProcessed(request.getIdempotencyKey());
+        if (replay.isPresent()) {
+            log.info("Idempotent replay - withdraw key={} already applied, not debiting again",
+                    request.getIdempotencyKey());
+            return replay.get();
+        }
+
         Account account = loadOwnedAccount(request.getAccountId(), callerCustomerId);
         BigDecimal amount = request.getAmount();
 
@@ -180,8 +210,38 @@ public class AccountServiceImpl implements AccountService {
         Account saved = repository.save(account);
 
         log.info("Withdrew {} from account {}", amount, saved.getId());
+        AccountResponse response = AccountResponse.from(saved);
+        rememberProcessed(request.getIdempotencyKey(), response);
         transactionRecorder.recordWithdraw(callerCustomerId, saved.getId(), amount, saved.getUpdatedAt());
-        return AccountResponse.from(saved);
+        return response;
+    }
+
+    // Returns the stored result if this idempotency key has already been applied, else empty.
+    // A blank/absent key means the caller opted out of deduplication.
+    private Optional<AccountResponse> replayIfProcessed(String idempotencyKey) {
+        if (!StringUtils.hasText(idempotencyKey)) {
+            return Optional.empty();
+        }
+        return processedOperationRepository.findById(idempotencyKey).map(ProcessedOperation::getResult);
+    }
+
+    // Records that this idempotency key has been applied, so a later retry replays the result.
+    // insert() (not save) makes the @Id a real uniqueness guard; a concurrent duplicate is harmless.
+    private void rememberProcessed(String idempotencyKey, AccountResponse result) {
+        if (!StringUtils.hasText(idempotencyKey)) {
+            return;
+        }
+        try {
+            processedOperationRepository.insert(ProcessedOperation.builder()
+                    .idempotencyKey(idempotencyKey)
+                    .accountId(result.getId())
+                    .result(result)
+                    .createdAt(Instant.now())
+                    .build());
+        } catch (DuplicateKeyException ex) {
+            log.warn("Idempotency key {} was already recorded by a concurrent request - ignoring",
+                    idempotencyKey);
+        }
     }
 
     @Override
