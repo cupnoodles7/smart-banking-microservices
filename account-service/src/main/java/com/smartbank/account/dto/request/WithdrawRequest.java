@@ -14,4 +14,9 @@ public class WithdrawRequest {
 
     @NotNull
     private BigDecimal amount;
+
+    // Optional. When supplied (e.g. by the Wallet Service on top-up debit), the same key is applied
+    // at most once so a retry after a timeout cannot debit the account twice. Direct API callers may
+    // omit it, in which case the operation is not deduplicated.
+    private String idempotencyKey;
 }

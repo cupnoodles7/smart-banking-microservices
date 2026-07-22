@@ -15,5 +15,10 @@ public class DepositRequest {
 
     @NotNull
     private BigDecimal amount;
+
+    // Optional. When supplied (e.g. by the Wallet Service on top-up debit/refund), the same key is
+    // applied at most once so a retry after a timeout cannot credit the account twice. Direct API
+    // callers may omit it, in which case the operation is not deduplicated.
+    private String idempotencyKey;
 }
 
